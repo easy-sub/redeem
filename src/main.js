@@ -1,6 +1,6 @@
 import { createApp } from 'vue'
 import App from './App.vue'
-import './receipt-theme.css'
+import './style.css'
 import { siteConfig } from './config/site'
 
 document.title = siteConfig.brandName
