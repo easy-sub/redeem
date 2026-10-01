@@ -9,16 +9,15 @@ git clone https://github.com/easy-sub/redeem.git
 cd redeem
 ```
 
-要换页面名称或视频，在构建前编辑 `src/config/site.js`：
+要换页面名称，在构建前编辑 `src/config/site.js`：
 
 ```js
 export const siteConfig = {
   brandName: '你的品牌名',
-  tutorialUrl: 'https://example.com/tutorial.mp4',
 }
 ```
 
-`tutorialUrl` 填可直接播放的 MP4 地址。暂时没有视频时留空，页面会显示“视频教程地址”占位文字。页面图标可替换 `public/icon.svg`。如果直接使用 Release 中的压缩包，显示的是该压缩包构建时填写的名称和视频。
+页面图标可替换 `public/icon.svg`。如果直接使用 Release 中的压缩包，显示的是该压缩包构建时填写的名称。
 
 ## 方式一：宝塔或 1Panel
 

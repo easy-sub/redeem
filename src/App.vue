@@ -5,20 +5,24 @@
     <main class="content-wrapper">
       <header class="hero-header">
         <div class="brand-row">
-          <div class="brand-mark" aria-hidden="true">
-            <img src="/icon.svg" alt="" />
-          </div>
-          <div class="brand-copy">
-            <strong>{{ siteBrandName }}</strong>
-            <span>AI 产品自助订阅兑换</span>
+          <div class="brand-mark">
+            <img src="/icon.svg" alt="Y" />
           </div>
           <div v-if="isExchangeMode" class="header-actions">
-            <button type="button" class="header-action-button" aria-label="视频教程" title="视频教程" @click="openTutorial">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
-                <polygon points="8 5 19 12 8 19 8 5"></polygon>
-              </svg>
-              <span>视频教程</span>
-            </button>
+            <div class="provider-select-wrap">
+              <span class="provider-select-mark" aria-hidden="true"></span>
+              <span class="provider-select-label" aria-hidden="true">{{ providerTitle }}</span>
+              <ChevronDown :size="15" aria-hidden="true" />
+              <select
+                class="provider-select"
+                aria-label="选择兑换服务"
+                :value="providerMode"
+                @change="switchProviderMode($event.target.value)"
+              >
+                <option value="openai">ChatGPT</option>
+                <option value="claude">Claude</option>
+              </select>
+            </div>
             <button type="button" class="header-action-button" aria-label="Token 查询" title="Token 查询" @click="switchToTokenQuery">
               <ScanSearch :size="16" aria-hidden="true" />
               <span>Token 查询</span>
@@ -75,27 +79,6 @@
         class="workflow-section"
         :class="{ 'workflow-section-wide': isTokenQueryMode || isBillingMode || isQueryMode }"
       >
-        <div v-if="isExchangeMode" class="provider-switch-row">
-          <div class="provider-switch" aria-label="选择兑换服务">
-            <button
-              type="button"
-              :class="{ active: providerMode === 'openai' }"
-              :aria-pressed="providerMode === 'openai'"
-              @click="switchProviderMode('openai')"
-            >
-              ChatGPT
-            </button>
-            <button
-              type="button"
-              :class="{ active: providerMode === 'claude' }"
-              :aria-pressed="providerMode === 'claude'"
-              @click="switchProviderMode('claude')"
-            >
-              Claude
-            </button>
-          </div>
-        </div>
-
         <ProgressBar v-if="isExchangeMode" :currentStep="currentStep" />
 
         <div class="steps-container">
@@ -154,43 +137,7 @@
         </div>
       </section>
 
-      <footer class="site-footer">© {{ currentYear }} {{ siteBrandName }}</footer>
     </main>
-
-    <div
-      v-if="tutorialOpen"
-      class="video-modal"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="videoTutorialTitle"
-      @click.self="closeTutorial"
-    >
-      <div class="video-modal-panel">
-        <div class="video-modal-header">
-          <h2 id="videoTutorialTitle">视频教程</h2>
-          <button type="button" class="video-modal-close" aria-label="关闭视频教程" @click="closeTutorial">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
-        </div>
-        <div class="video-frame">
-          <video
-            v-if="tutorialUrl"
-            :title="`${siteBrandName} 视频教程`"
-            controls
-            controlsList="nodownload"
-            playsinline
-            preload="metadata"
-            @contextmenu.prevent
-          >
-            <source :src="tutorialUrl" type="video/mp4" />
-          </video>
-          <p v-else class="video-placeholder">视频教程地址</p>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -203,10 +150,9 @@ import CDKService from './components/CDKService'
 import BillingQuery from './components/BillingQuery'
 import TokenQuery from './components/TokenQuery'
 import ClientAnnouncements from './components/ClientAnnouncementBroadcast'
-import { ReceiptText, ScanSearch } from '@lucide/vue'
+import { ChevronDown, ReceiptText, ScanSearch } from '@lucide/vue'
 import { queryOrderByCard, queryRedeemResult, validateCard } from './services/api'
 import { clearRedeemFlow, createRequestNonce, readRedeemFlow, writeRedeemFlow } from './utils/redeemFlow'
-import { siteConfig } from './config/site'
 
 const PROVIDER_STORAGE_KEY = 'redeem.client.provider'
 
@@ -250,14 +196,12 @@ export default {
     BillingQuery,
     TokenQuery,
     ClientAnnouncements,
+    ChevronDown,
     ReceiptText,
     ScanSearch
   },
   data() {
     return {
-      siteBrandName: siteConfig.brandName,
-      tutorialUrl: siteConfig.tutorialUrl,
-      currentYear: new Date().getFullYear(),
       currentStep: 0,
       requestNonce: createRequestNonce(),
       restoreVersion: 0,
@@ -272,8 +216,7 @@ export default {
         tokenInfo: null
       },
       orderData: null,
-      orderCompleted: false,
-      tutorialOpen: false
+      orderCompleted: false
     }
   },
   computed: {
@@ -312,14 +255,11 @@ export default {
     }
   },
   mounted() {
-    window.addEventListener('keydown', this.handleKeydown)
     window.addEventListener('popstate', this.handlePopState)
     this.restoreRedeemFlow()
   },
   beforeUnmount() {
-    window.removeEventListener('keydown', this.handleKeydown)
     window.removeEventListener('popstate', this.handlePopState)
-    document.body.style.overflow = ''
   },
   methods: {
     handleCardValidated(data) {
@@ -475,19 +415,6 @@ export default {
       }
       this.viewMode = 'exchange'
       this.currentStep = 0
-    },
-    openTutorial() {
-      this.tutorialOpen = true
-      document.body.style.overflow = 'hidden'
-    },
-    closeTutorial() {
-      this.tutorialOpen = false
-      document.body.style.overflow = ''
-    },
-    handleKeydown(event) {
-      if (event.key === 'Escape' && this.tutorialOpen) {
-        this.closeTutorial()
-      }
     },
     handlePopState() {
       this.viewMode = readInitialViewMode()
@@ -826,14 +753,6 @@ body {
   display: flex;
   justify-content: center;
   margin-top: 20px;
-}
-
-.site-footer {
-  margin-top: auto;
-  padding: 10px 0 4px;
-  text-align: center;
-  color: var(--ui-label-secondary);
-  font-size: 13px;
 }
 
 .slide-fade-enter-active,

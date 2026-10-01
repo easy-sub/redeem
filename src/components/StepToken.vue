@@ -317,10 +317,16 @@ export default {
 }
 
 .guide-steps a {
-  color: #165dff;
-  text-decoration: none;
-  font-weight: 500;
-  word-break: break-all;
+  color: #12665c;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+}
+
+.guide-steps a:hover {
+  color: #0a4f48;
 }
 
 .inline-code {

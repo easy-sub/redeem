@@ -1,0 +1,510 @@
+.app-container:is(.provider-openai, .provider-claude) {
+  --y-accent: #285be8;
+  --y-accent-hover: #1946c5;
+  --y-accent-soft: #eaf0ff;
+  --y-accent-outline: #dbe4ff;
+  --y-accent-border: #b9c9fb;
+  --y-accent-text: #2148b3;
+  --y-accent-disabled: #acb9da;
+  --y-surface: #f4f5f7;
+  --ui-bg: #f4f5f7;
+  --ui-card: #fff;
+  --ui-fill: #f1f3f6;
+  --ui-separator: #dfe2e7;
+  --ui-label: #202328;
+  --ui-label-secondary: #626a75;
+  --ui-label-tertiary: #87909b;
+  --ui-blue: var(--y-accent);
+  --ui-green: #18845b;
+  --ui-red: #d9484d;
+  --ui-orange: #bb711b;
+  --fresh-border: #dfe2e7;
+  --fresh-panel: #fff;
+  --fresh-soft: #f4f5f7;
+  --fresh-mint: #e8f4ed;
+  --fresh-blue-soft: var(--y-accent-soft);
+  --fresh-shadow: none;
+  --fresh-shadow-soft: none;
+  background: var(--y-surface);
+}
+
+.app-container.provider-claude {
+  --y-accent: #0a6d68;
+  --y-accent-hover: #075853;
+  --y-accent-soft: #e4f4f1;
+  --y-accent-outline: #c7e9e2;
+  --y-accent-border: #a8dcd2;
+  --y-accent-text: #075d58;
+  --y-accent-disabled: #a7cfc8;
+  --y-surface: #f2f6f5;
+}
+
+.app-container .content-wrapper {
+  max-width: 1080px;
+}
+
+.app-container .hero-header {
+  padding: 0 0 28px;
+  border-bottom: 1px solid #d8dce2;
+}
+
+.app-container .brand-row {
+  min-height: 72px;
+  padding: 12px 0;
+  background: transparent;
+  color: #202328;
+}
+
+.app-container:is(.provider-openai, .provider-claude) .brand-mark {
+  width: 42px;
+  height: 42px;
+  border: 1px solid #d1d5dc;
+  border-radius: 8px;
+  background: #202328;
+  box-shadow: none;
+}
+
+.app-container .brand-mark img {
+  width: 34px;
+  height: 34px;
+}
+
+.app-container .provider-select-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 16px 0 8px;
+  flex: 0 0 auto;
+  margin-right: 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.16s ease;
+}
+
+.app-container .provider-select-wrap:hover {
+  background: #fff;
+}
+
+.app-container .provider-select-wrap:focus-within {
+  outline: 3px solid var(--y-accent-outline);
+  outline-offset: 2px;
+}
+
+.app-container .provider-select-wrap::after {
+  content: '';
+  position: absolute;
+  right: -7px;
+  width: 1px;
+  height: 20px;
+  background: #d1d5dc;
+}
+
+.app-container .provider-select-mark {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  border-radius: 3px;
+  background: var(--y-accent);
+}
+
+.app-container .provider-select-label {
+  color: #202328;
+  font-size: 13px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.app-container .provider-select-wrap > svg {
+  color: #626a75;
+  flex: 0 0 auto;
+}
+
+.app-container .provider-select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  appearance: none;
+  cursor: pointer;
+}
+
+.app-container:is(.provider-openai, .provider-claude) .header-actions {
+  gap: 2px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.app-container:is(.provider-openai, .provider-claude) .header-action-button {
+  min-height: 40px;
+  border-radius: 6px;
+  color: #404751;
+  font-size: 13px;
+}
+
+.app-container:is(.provider-openai, .provider-claude) .header-action-button svg {
+  padding: 0;
+  background: transparent;
+  color: var(--y-accent);
+}
+
+.app-container:is(.provider-openai, .provider-claude) .header-action-button:hover {
+  background: #fff;
+  color: var(--y-accent);
+  box-shadow: none;
+}
+
+.app-container .hero-layout {
+  margin-top: 42px;
+}
+
+.app-container:is(.provider-openai, .provider-claude) .nav-large-title {
+  color: #202328;
+  font-size: 40px;
+  font-weight: 780;
+  line-height: 1.2;
+}
+
+.app-container:is(.provider-openai, .provider-claude) .nav-large-title span:last-child {
+  color: var(--y-accent);
+}
+
+.app-container:is(.provider-openai, .provider-claude) .nav-large-title span:last-child::after {
+  display: none;
+}
+
+.app-container:is(.provider-openai, .provider-claude) .nav-subtitle {
+  color: #626a75;
+}
+
+.app-container .hero-trust-badges {
+  gap: 0;
+  margin-top: 20px;
+}
+
+.app-container:is(.provider-openai, .provider-claude) .hero-trust-badge {
+  min-height: 28px;
+  padding: 0 14px;
+  border: 0;
+  border-right: 1px solid #d1d5dc;
+  border-radius: 0;
+  background: transparent;
+  color: #626a75;
+  box-shadow: none;
+  font-size: 13px;
+}
+
+.app-container .hero-trust-badge:first-child {
+  padding-left: 0;
+}
+
+.app-container .hero-trust-badge:last-child {
+  border-right: 0;
+}
+
+.app-container:is(.provider-openai, .provider-claude) .hero-trust-badge svg {
+  color: #e66559;
+}
+
+.app-container .workflow-section,
+.app-container .workflow-section.workflow-section-wide {
+  max-width: 1080px;
+  padding-top: 22px;
+}
+
+.app-container .progress-bar {
+  width: 100%;
+  padding: 8px 0 16px;
+}
+
+.app-container .progress-step.active .step-circle {
+  background: var(--y-accent);
+  border-color: var(--y-accent);
+  box-shadow: none;
+}
+
+.app-container .progress-step.completed .step-circle {
+  background: var(--y-accent-soft);
+  border-color: var(--y-accent-border);
+  color: var(--y-accent);
+  box-shadow: none;
+}
+
+.app-container .progress-step.completed .step-label {
+  color: var(--y-accent);
+}
+
+.app-container .progress-line {
+  background: #dfe2e7;
+}
+
+.app-container .progress-fill {
+  background: var(--y-accent);
+}
+
+.app-container:is(.provider-openai, .provider-claude) .ui-card,
+.app-container .query-input-card {
+  border: 1px solid #d8dce2;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: none;
+}
+
+.app-container:is(.provider-openai, .provider-claude) .workflow-section .card-main::before,
+.app-container:is(.provider-openai, .provider-claude) .workflow-section .confirm-card::before,
+.app-container:is(.provider-openai, .provider-claude) .workflow-section .order-success::before {
+  height: 4px;
+  border-radius: 6px 6px 0 0;
+  background: var(--y-accent);
+}
+
+.app-container:is(.provider-openai, .provider-claude) .step-card .card-icon,
+.app-container:is(.provider-openai, .provider-claude) .step-token .card-icon,
+.app-container:is(.provider-openai, .provider-claude) .confirm-card .card-icon {
+  border: 1px solid var(--y-accent-outline);
+  border-radius: 6px;
+  background: var(--y-accent-soft);
+  color: var(--y-accent);
+  box-shadow: none;
+}
+
+.app-container:is(.provider-openai, .provider-claude) .ui-input,
+.app-container:is(.provider-openai, .provider-claude) .ui-textarea,
+.app-container .query-input-card .ui-textarea {
+  border-color: #cfd5de;
+  border-radius: 6px;
+  background: #f8f9fa;
+  box-shadow: none;
+}
+
+.app-container:is(.provider-openai, .provider-claude) .ui-input:focus,
+.app-container:is(.provider-openai, .provider-claude) .ui-textarea:focus,
+.app-container .query-input-card .ui-textarea:focus {
+  border-color: var(--y-accent);
+  background: #fff;
+  box-shadow: 0 0 0 3px var(--y-accent-outline);
+}
+
+.app-container:is(.provider-openai, .provider-claude) .btn-filled {
+  border-radius: 6px;
+  background: var(--y-accent);
+  box-shadow: none;
+}
+
+.app-container:is(.provider-openai, .provider-claude) .btn-filled:hover:not(:disabled) {
+  background: var(--y-accent-hover);
+}
+
+.app-container:is(.provider-openai, .provider-claude) .btn-filled:disabled {
+  background: var(--y-accent-disabled);
+}
+
+.app-container:is(.provider-openai, .provider-claude) .btn-filled.btn-destructive {
+  background: #d9484d;
+}
+
+.app-container:is(.provider-openai, .provider-claude) .btn-gray,
+.app-container:is(.provider-openai, .provider-claude) .btn-tinted,
+.app-container:is(.provider-openai, .provider-claude) .flow-back-button,
+.app-container:is(.provider-openai, .provider-claude) .query-back-button,
+.app-container:is(.provider-openai, .provider-claude) .subpage-back-button {
+  border: 1px solid #d1d5dc;
+  border-radius: 6px;
+  background: #fff;
+  color: var(--y-accent);
+  box-shadow: none;
+}
+
+.app-container:is(.provider-openai, .provider-claude) .btn-plain {
+  color: var(--y-accent);
+}
+
+.app-container:is(.provider-openai, .provider-claude) .service-switch {
+  border-color: #d1d5dc;
+  border-radius: 6px;
+  background: #f1f3f6;
+  box-shadow: none;
+}
+
+.app-container:is(.provider-openai, .provider-claude) .service-switch button.active {
+  border-radius: 4px;
+  color: var(--y-accent);
+  box-shadow: none;
+}
+
+.app-container:is(.provider-openai, .provider-claude) .ui-callout.is-info {
+  border-color: var(--y-accent-outline);
+  background: var(--y-accent-soft);
+  color: var(--y-accent-text);
+}
+
+.app-container:is(.provider-openai, .provider-claude) .ui-progress-track {
+  background: #dfe2e7;
+}
+
+.app-container:is(.provider-openai, .provider-claude) .ui-progress-fill {
+  background: var(--y-accent);
+}
+
+.app-container .token-account-icon,
+.app-container .token-status-icon {
+  border-color: var(--y-accent-outline);
+  border-radius: 6px;
+  background: var(--y-accent-soft);
+  color: var(--y-accent);
+}
+
+.app-container .token-overview {
+  border-color: #d8dce2;
+  border-radius: 6px;
+  box-shadow: none;
+}
+
+.app-container .token-overview::before,
+.app-container .token-overview::after {
+  display: none;
+}
+
+.app-container .token-highlights .token-highlight-card,
+.app-container .token-renewal-actions,
+.app-container .token-details-panel,
+.app-container .billing-account-band,
+.app-container .billing-fact,
+.app-container .billing-invoices {
+  border-color: #d8dce2;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: none;
+}
+
+.app-container .token-highlights .token-highlight-card:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.app-container .token-highlight-icon {
+  border-radius: 6px;
+}
+
+.app-container .token-highlight-card.is-renewal .token-highlight-icon,
+.app-container .token-highlight-card.is-grace .token-highlight-icon {
+  background: var(--y-accent-soft);
+  color: var(--y-accent);
+}
+
+.app-container .token-details-head h3,
+.app-container .token-query-reset:hover {
+  color: var(--y-accent);
+}
+
+.app-container .token-query-reset:hover {
+  border-color: var(--y-accent-border);
+  background: var(--y-accent-soft);
+}
+
+.app-container .announcement-trigger {
+  border-color: #d1d5dc;
+  border-radius: 6px;
+  color: var(--y-accent);
+  box-shadow: 0 4px 12px #20232814;
+}
+
+.app-container .announcement-trigger::before {
+  border-radius: 6px;
+  border-color: var(--y-accent-border);
+}
+
+.app-container .announcement-badge {
+  border-color: #f4f5f7;
+  background: #f16f61;
+}
+
+.app-container .announcement-panel {
+  border-color: #d8dce2;
+  border-radius: 6px;
+  box-shadow: 0 12px 30px #2023281c;
+}
+
+.app-container .announcement-broadcast,
+.app-container .announcement-broadcast.is-expanded {
+  border-radius: 6px;
+  background: #202328;
+  box-shadow: 0 12px 30px #20232833;
+}
+
+.app-container .broadcast-icon {
+  background: #353b45;
+  color: #f16f61;
+}
+
+@media (max-width: 680px) {
+  .app-container:is(.provider-openai, .provider-claude) {
+    padding: 0 12px 20px;
+    background: var(--y-surface);
+  }
+
+  .app-container .content-wrapper {
+    min-height: 100vh;
+  }
+
+  .app-container .brand-row {
+    margin: 0;
+    padding: 12px 0;
+  }
+
+  .app-container:is(.provider-openai, .provider-claude) .header-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    gap: 4px;
+  }
+
+  .app-container .provider-select-wrap {
+    width: 100%;
+    min-width: 0;
+    margin-right: 0;
+    padding: 0 8px;
+    gap: 6px;
+  }
+
+  .app-container .provider-select-wrap::after {
+    right: -2px;
+  }
+
+  .app-container:is(.provider-openai, .provider-claude) .header-action-button {
+    min-width: 0;
+    padding: 0 4px;
+    gap: 4px;
+    justify-content: center;
+    white-space: nowrap;
+    font-size: 11px;
+  }
+
+  .app-container .hero-layout {
+    margin-top: 28px;
+  }
+
+  .app-container:is(.provider-openai, .provider-claude) .nav-large-title {
+    font-size: 30px;
+  }
+
+  .app-container .hero-trust-badges {
+    display: flex;
+    gap: 8px 0;
+  }
+
+  .app-container:is(.provider-openai, .provider-claude) .hero-trust-badge {
+    padding: 0 8px;
+    font-size: 11px;
+  }
+
+  .app-container .workflow-section,
+  .app-container .workflow-section.workflow-section-wide {
+    padding-top: 16px;
+  }
+}
