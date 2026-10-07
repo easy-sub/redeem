@@ -191,7 +191,13 @@ test('说明弹窗限制 Tab、Escape 关闭并恢复焦点，教程关闭暂停
   app.handleKeydown({ key: 'Escape' })
   assert.equal(app.helpOpen, false)
   assert.equal(trigger.focus.mock.callCount(), 1)
+  app.tutorialUrl = ''
   app.openTutorial()
+  assert.equal(app.tutorialOpen, false)
+  assert.equal(document.body.style.overflow, '')
+  app.tutorialUrl = '/tutorial.mp4'
+  app.openTutorial()
+  assert.equal(app.tutorialOpen, true)
   app.closeTutorial()
   assert.equal(app.$refs.tutorialVideo.pause.mock.callCount(), 2)
   assert.equal(document.body.style.overflow, '')

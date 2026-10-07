@@ -6,14 +6,14 @@
       <header class="hero-header">
         <div class="brand-row">
           <div class="brand-mark" aria-hidden="true">
-            <img src="/icon.svg" alt="" />
+            <img :src="siteLogoUrl" alt="" />
           </div>
           <div class="brand-copy">
             <strong>{{ siteBrandName }}</strong>
-            <span>AI 产品自助订阅兑换</span>
+            <span v-if="siteSubtitle">{{ siteSubtitle }}</span>
           </div>
           <div v-if="isExchangeMode" class="header-actions">
-            <button type="button" class="header-action-button" aria-label="视频教程" title="视频教程" @click="openTutorial">
+            <button v-if="tutorialUrl" type="button" class="header-action-button" aria-label="视频教程" title="视频教程" @click="openTutorial">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
                 <polygon points="8 5 19 12 8 19 8 5"></polygon>
               </svg>
@@ -170,11 +170,11 @@
         <span>已兑换但权益未更新？先刷新或重新登录。</span>
         <button type="button" class="btn-plain" @click="openHelp">查看说明</button>
       </aside>
-      <footer class="site-footer">© {{ currentYear }} {{ siteBrandName }}</footer>
+      <footer v-if="siteCopyright" class="site-footer">{{ siteCopyright }}</footer>
     </main>
 
     <div
-      v-if="tutorialOpen"
+      v-if="tutorialOpen && tutorialUrl"
       class="video-modal"
       role="dialog"
       aria-modal="true"
@@ -194,7 +194,6 @@
         <div class="video-frame">
           <video
             ref="tutorialVideo"
-            v-if="tutorialUrl"
             :title="`${siteBrandName} 视频教程`"
             controls
             controlsList="nodownload"
@@ -204,7 +203,6 @@
           >
             <source :src="tutorialUrl" type="video/mp4" />
           </video>
-          <p v-else class="video-placeholder">视频教程地址</p>
         </div>
       </div>
     </div>
@@ -288,8 +286,10 @@ export default {
   data() {
     return {
       siteBrandName: siteConfig.brandName,
-      tutorialUrl: siteConfig.tutorialUrl,
-      currentYear: new Date().getFullYear(),
+      siteSubtitle: siteConfig.subtitle?.trim() || '',
+      siteLogoUrl: siteConfig.logoUrl?.trim() || '/icon.svg',
+      tutorialUrl: siteConfig.tutorialUrl?.trim() || '',
+      siteCopyright: siteConfig.copyright?.trim() || '',
       currentStep: 0,
       requestNonce: createRequestNonce(),
       restoreVersion: 0,
@@ -512,6 +512,7 @@ export default {
       this.currentStep = 0
     },
     openTutorial() {
+      if (!this.tutorialUrl) return
       this.dialogTrigger = document.activeElement
       this.helpOpen = false
       this.tutorialOpen = true
