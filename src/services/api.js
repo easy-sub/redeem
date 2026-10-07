@@ -1,29 +1,16 @@
-import { encodeSessionToken } from '../utils/zstdToken'
-import { clearRedeemFlow } from '../utils/redeemFlow'
+import { encodeSessionToken } from '../utils/zstdToken.js'
 
 const BASE_URL = '/api/v1/sub'
-const CDK_VERIFICATION_EXPIRED_MESSAGE = 'CDK 验证有效期为 3 分钟，当前验证已失效。页面将在 3 秒后返回首页，请重新验证 CDK。'
-const CDK_VERIFICATION_EXPIRED_REDIRECT_DELAY = 3000
-
-let cdkVerificationExpiredRedirectTimer = null
 
 const handleCDKVerificationExpired = (payload) => {
   const message = String(payload?.error || payload?.message || '')
   const expired = payload?.error_code === 'CDK_VERIFICATION_EXPIRED' || /CDK\s*验证已过期/.test(message)
   if (!expired) return payload
 
-  clearRedeemFlow()
-  if (typeof window !== 'undefined' && !cdkVerificationExpiredRedirectTimer) {
-    cdkVerificationExpiredRedirectTimer = window.setTimeout(() => {
-      clearRedeemFlow()
-      window.location.replace('/')
-    }, CDK_VERIFICATION_EXPIRED_REDIRECT_DELAY)
-  }
-
   return {
     ...payload,
-    error: CDK_VERIFICATION_EXPIRED_MESSAGE,
-    message: CDK_VERIFICATION_EXPIRED_MESSAGE,
+    error: '卡密校验已失效，请重试，已填写的内容会保留。',
+    message: '卡密校验已失效，请重试，已填写的内容会保留。',
     cdkVerificationExpired: true,
   }
 }
@@ -73,12 +60,19 @@ export const getClientAnnouncements = async () => {
 const normalizePlanName = (plan) => {
   const names = {
     chatgptplusplan: 'ChatGPT Plus',
-    chatgptprolite: 'ChatGPT Pro 5x',
-    chatgptpro: 'ChatGPT Pro 20x',
-    chatgptpromax: 'ChatGPT Pro 50x',
+    chatgptprolite: 'ChatGPT Pro 100',
+    chatgptproliteplan: 'ChatGPT Pro 100',
+    chatgptpro: 'ChatGPT Pro 200',
+    chatgptproplan: 'ChatGPT Pro 200',
+    chatgptpromax: 'ChatGPT Pro 500',
     chatgptgoplan: 'ChatGPT Go',
-    chatgpt2pro20x: 'ChatGPT Pro 20x',
+    chatgpt2pro20x: 'ChatGPT Pro 200',
     claudepro: 'Claude Pro',
+    PRODUCT_TIER_SUPER_GROK_LITE: 'SuperGrok Lite',
+    PRODUCT_TIER_GROK_PRO: 'SuperGrok',
+    PRODUCT_TIER_SUPER_GROK_PLUS: 'SuperGrok Plus',
+    PRODUCT_TIER_SUPER_GROK_PRO: 'SuperGrok Heavy',
+
     claudemax5x: 'Claude Max 5x',
     claudemax20x: 'Claude Max 20x',
   }
@@ -86,11 +80,11 @@ const normalizePlanName = (plan) => {
 }
 
 const normalizeProvider = (provider) => {
-  return String(provider || 'openai').trim().toLowerCase() === 'claude' ? 'claude' : 'openai'
+  return (['openai', 'claude', 'grok'].includes(String(provider || '').trim().toLowerCase()) ? String(provider).trim().toLowerCase() : 'openai')
 }
 
 const providerLabel = (provider) => {
-  return normalizeProvider(provider) === 'claude' ? 'Claude' : 'ChatGPT'
+  return { openai: 'ChatGPT', claude: 'Claude', grok: 'Grok' }[normalizeProvider(provider)]
 }
 
 const mapCDKStatusText = (status) => {
@@ -105,13 +99,14 @@ const mapCDKStatusText = (status) => {
   return statusMap[status] || status || '未知'
 }
 
-export const validateCard = async (cardCode, expectedProvider = 'openai', requestNonce = '') => {
+export const validateCard = async (cardCode, expectedProvider = 'openai', requestNonce = '', renew = false) => {
   const cdk = String(cardCode || '').trim()
   const expected = normalizeProvider(expectedProvider)
   const response = await request('/verifyCdk', 'POST', {
     cdk,
     expected_provider: expected,
     request_nonce: String(requestNonce || '').trim(),
+    renew,
   })
 
   if (response.code !== 200) {
@@ -148,11 +143,45 @@ export const validateCard = async (cardCode, expectedProvider = 'openai', reques
   }
 }
 
-export const validateToken = async (sessionText, provider = 'openai', cdk = '', activationToken = '') => {
-  const normalizedProvider = normalizeProvider(provider)
-  if (normalizedProvider === 'claude') {
-    return validateClaudeSessionKey(sessionText, cdk, activationToken)
+// 仅在用户点击继续或提交时恢复校验，空闲页面不会长期占用卡密。
+const requestWithCDKVerification = async (url, payload, provider, requestNonce, onCardVerified) => {
+  const verify = async () => {
+    const verified = await validateCard(payload.cdk, provider, requestNonce, true)
+    if (verified.code !== 200) {
+      return { code: 0, error: verified.message, retryable: verified.retryable }
+    }
+    payload.activation_token = verified.data.activationToken
+    onCardVerified?.(verified.data)
+    return null
   }
+
+  if (requestNonce) {
+    const error = await verify()
+    if (error) return error
+  }
+
+  let response = await request(url, 'POST', payload)
+  // 处理校验与请求之间过期的情况，最多恢复一次，避免循环提交。
+  if (response.cdkVerificationExpired && requestNonce) {
+    const error = await verify()
+    if (error) return error
+    response = await request(url, 'POST', payload)
+  }
+  return response
+}
+
+export const validateToken = async (sessionText, provider = 'openai', cdk = '', activationToken = '', requestNonce = '', onCardVerified) => {
+  const normalizedProvider = normalizeProvider(provider)
+  switch (normalizedProvider) {
+    case 'claude':
+    case 'grok':
+      return validateCookieCredential(sessionText, cdk, activationToken, requestNonce, onCardVerified, normalizedProvider)
+    default:
+      return validateOpenAISession(sessionText, cdk, activationToken, requestNonce, onCardVerified)
+  }
+}
+
+const validateOpenAISession = async (sessionText, cdk, activationToken, requestNonce, onCardVerified) => {
   const parsed = parseSessionToken(sessionText)
 
   if (parsed.parseError) {
@@ -186,11 +215,11 @@ export const validateToken = async (sessionText, provider = 'openai', cdk = '', 
     }
   }
 
-  const precheck = await request('/precheckAccount', 'POST', {
+  const precheck = await requestWithCDKVerification('/precheckAccount', {
     token: redeemToken,
     cdk,
     activation_token: activationToken,
-  })
+  }, 'openai', requestNonce, onCardVerified)
   const accountData = {
     provider: 'openai',
     email: precheck.email || parsed.email,
@@ -221,12 +250,13 @@ export const validateToken = async (sessionText, provider = 'openai', cdk = '', 
   }
 }
 
-const validateClaudeSessionKey = async (sessionText, cdk, activationToken) => {
+const validateCookieCredential = async (sessionText, cdk, activationToken, requestNonce, onCardVerified, provider = 'claude') => {
+  const credentialLabel = provider === 'grok' ? 'Grok SSO' : 'Claude sessionKey'
   const sessionKey = String(sessionText || '').trim()
   if (!sessionKey) {
     return {
       code: 0,
-      message: '请输入 Claude sessionKey',
+      message: `请输入 ${credentialLabel}`,
     }
   }
   let redeemToken = ''
@@ -235,22 +265,22 @@ const validateClaudeSessionKey = async (sessionText, cdk, activationToken) => {
   } catch {
     return {
       code: 0,
-      message: 'sessionKey 压缩失败，请刷新页面后重试',
+      message: `${credentialLabel} 处理失败，请刷新页面后重试`,
     }
   }
-  const precheck = await request('/precheckAccount', 'POST', {
+  const precheck = await requestWithCDKVerification('/precheckAccount', {
     token: redeemToken,
     cdk,
     activation_token: activationToken,
-  })
+  }, provider, requestNonce, onCardVerified)
   const accountEmail = precheck.email || ''
   const accountName = precheck.account_name || ''
   const accountData = {
-    provider: 'claude',
+    provider,
     email: accountEmail,
-    name: accountEmail,
+    name: provider === 'grok' ? precheck.name || accountEmail : accountEmail,
     accountName,
-    accountType: precheck.plan_type || 'claude',
+    accountType: precheck.plan_type || provider,
     accountId: precheck.account_id || '',
     subscriptionPlan: precheck.subscription_plan || '',
     hasActiveSubscription: Boolean(precheck.has_active_subscription),
@@ -264,7 +294,7 @@ const validateClaudeSessionKey = async (sessionText, cdk, activationToken) => {
   if (precheck.code !== 200) {
     return {
       code: 0,
-      message: normalizeError(precheck, 'Claude 账号校验失败'),
+      message: normalizeError(precheck, `${credentialLabel} 账号校验失败`),
       data: accountData,
     }
   }
@@ -274,7 +304,7 @@ const validateClaudeSessionKey = async (sessionText, cdk, activationToken) => {
   }
 }
 
-export const createOrder = async (cardCode, token, tokenInfo, cardInfo) => {
+export const createOrder = async (cardCode, token, tokenInfo, cardInfo, requestNonce = '', onCardVerified) => {
   const cdk = String(cardCode || '').trim()
   const verifiedProductName = cardInfo?.productName || ''
   const verifiedProductAlias = cardInfo?.productAlias || ''
@@ -283,7 +313,31 @@ export const createOrder = async (cardCode, token, tokenInfo, cardInfo) => {
     cdk,
     activation_token: cardInfo?.activationToken || '',
   }
-  let response = await request('/redeem', 'POST', payload)
+  // 先恢复当前校验关联的订单，避免上次请求已成功却重新占用、重复下单。
+  if (requestNonce && payload.activation_token) {
+    const recovered = await queryOrderByCard(cdk, payload.activation_token)
+    if (recovered.code === 200 && recovered.data) {
+      return {
+        code: 200,
+        data: {
+          ...recovered.data,
+          productName: verifiedProductName || recovered.data.productName,
+          productAlias: verifiedProductAlias || recovered.data.productAlias,
+        },
+      }
+    }
+    if (recovered.code !== 200) {
+      return {
+        code: 0,
+        uncertain: true,
+        message: '暂未确认当前订单，请保持当前页面并重新点击确认提交',
+      }
+    }
+  }
+
+  let response = await requestWithCDKVerification(
+    '/redeem', payload, cardInfo?.provider || tokenInfo?.provider || 'openai', requestNonce, onCardVerified,
+  )
 
   if (isRetryableResponse(response)) {
     await new Promise((resolve) => window.setTimeout(resolve, 600))
@@ -320,7 +374,7 @@ export const createOrder = async (cardCode, token, tokenInfo, cardInfo) => {
   }
 
   if (isRetryableResponse(response)) {
-    const recovered = await queryOrderByCard(cdk, cardInfo?.activationToken || '')
+    const recovered = await queryOrderByCard(cdk, payload.activation_token)
     if (recovered.code === 200 && recovered.data) {
       return {
         code: 200,

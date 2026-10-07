@@ -93,6 +93,14 @@
             >
               Claude
             </button>
+            <button
+              type="button"
+              :class="{ active: providerMode === 'grok' }"
+              :aria-pressed="providerMode === 'grok'"
+              @click="switchProviderMode('grok')"
+            >
+              Grok
+            </button>
           </div>
         </div>
 
@@ -125,6 +133,8 @@
               :provider="providerMode"
               :card-code="cardData.cardCode"
               :card-info="cardData.cardInfo"
+              :request-nonce="requestNonce"
+              @card-verified="handleCardReverified"
               @validated="handleTokenValidated"
             />
             <StepOrder
@@ -133,6 +143,8 @@
               :cardCode="cardData.cardCode"
               :token="tokenData.token"
               :cardInfo="cardData.cardInfo"
+              :request-nonce="requestNonce"
+              @card-verified="handleCardReverified"
               :tokenInfo="tokenData.tokenInfo"
               :initial-order="orderData"
               @submitting="handleOrderSubmitting"
@@ -154,6 +166,10 @@
         </div>
       </section>
 
+      <aside v-if="isExchangeMode" class="help-row">
+        <span>已兑换但权益未更新？先刷新或重新登录。</span>
+        <button type="button" class="btn-plain" @click="openHelp">查看说明</button>
+      </aside>
       <footer class="site-footer">© {{ currentYear }} {{ siteBrandName }}</footer>
     </main>
 
@@ -168,7 +184,7 @@
       <div class="video-modal-panel">
         <div class="video-modal-header">
           <h2 id="videoTutorialTitle">视频教程</h2>
-          <button type="button" class="video-modal-close" aria-label="关闭视频教程" @click="closeTutorial">
+          <button ref="tutorialClose" type="button" class="video-modal-close" aria-label="关闭视频教程" @click="closeTutorial">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -177,12 +193,13 @@
         </div>
         <div class="video-frame">
           <video
+            ref="tutorialVideo"
             v-if="tutorialUrl"
             :title="`${siteBrandName} 视频教程`"
             controls
             controlsList="nodownload"
             playsinline
-            preload="metadata"
+            preload="none"
             @contextmenu.prevent
           >
             <source :src="tutorialUrl" type="video/mp4" />
@@ -190,6 +207,19 @@
           <p v-else class="video-placeholder">视频教程地址</p>
         </div>
       </div>
+    </div>
+    <div v-if="helpOpen" class="video-modal" role="dialog" aria-modal="true" aria-labelledby="helpTitle" @click.self="closeHelp">
+      <section class="video-modal-panel help-modal-panel">
+        <div class="video-modal-header">
+          <h2 id="helpTitle">兑换后如何查看权益？</h2>
+          <button ref="helpClose" type="button" class="video-modal-close" aria-label="关闭说明" @click="closeHelp">×</button>
+        </div>
+        <div class="help-modal-body">
+          <p>兑换成功后，请刷新页面，或退出后重新登录账号，查看最新订阅权益。</p>
+          <p>你可以在「查询 / 调换」中查看订单状态。订单处理期间请保持目标账号的登录状态，并耐心等待结果。</p>
+          <button type="button" class="btn-filled" @click="closeHelp">知道了</button>
+        </div>
+      </section>
     </div>
   </div>
 </template>
@@ -214,11 +244,13 @@ const readInitialViewMode = () => {
   if (typeof window === 'undefined') return 'exchange'
   if (window.location.pathname === '/billing') return 'billing'
   if (window.location.pathname === '/token-query') return 'token-query'
+  if (new URLSearchParams(window.location.search).get('view') === 'query') return 'query'
   return 'exchange'
 }
 
 const normalizeProviderMode = (provider) => {
-  return String(provider || '').trim().toLowerCase() === 'claude' ? 'claude' : 'openai'
+  const value = String(provider || '').trim().toLowerCase()
+  return ['openai', 'claude', 'grok'].includes(value) ? value : 'openai'
 }
 
 const readStoredProviderMode = () => {
@@ -235,7 +267,7 @@ const writeStoredProviderMode = (provider) => {
   try {
     window.localStorage.setItem(PROVIDER_STORAGE_KEY, normalizeProviderMode(provider))
   } catch (error) {
-    // localStorage may be unavailable in private mode.
+    // 隐私模式下存储可能受限，仍允许切换服务。
   }
 }
 
@@ -273,14 +305,14 @@ export default {
       },
       orderData: null,
       orderCompleted: false,
-      tutorialOpen: false
+      tutorialOpen: false,
+      helpOpen: false,
+      dialogTrigger: null
     }
   },
   computed: {
     providerThemeClass() {
-      return this.isBillingMode || this.isTokenQueryMode || this.providerMode !== 'claude'
-        ? 'provider-openai'
-        : 'provider-claude'
+      return this.isBillingMode || this.isTokenQueryMode ? 'provider-openai' : `provider-${this.providerMode}`
     },
     isExchangeMode() {
       return this.viewMode === 'exchange'
@@ -295,7 +327,7 @@ export default {
       return this.viewMode === 'token-query'
     },
     providerTitle() {
-      return this.providerMode === 'claude' ? 'Claude' : 'ChatGPT'
+      return { openai: 'ChatGPT', claude: 'Claude', grok: 'Grok' }[this.providerMode]
     },
     heroTitle() {
       return this.isBillingMode || this.isTokenQueryMode ? 'ChatGPT' : this.providerTitle
@@ -333,6 +365,10 @@ export default {
     },
     cancelRedeemRestore() {
       this.restoreVersion++
+    },
+    handleCardReverified(cardInfo) {
+      this.cardData = { ...this.cardData, cardInfo }
+      this.persistRedeemFlow(this.currentStep === 2 ? 'submitting' : 'reserved')
     },
     handleTokenValidated(data) {
       this.tokenData = {
@@ -390,13 +426,6 @@ export default {
         this.restoreVersion === restoreVersion && this.requestNonce === flow.requestNonce
       )
 
-      const expiresAt = Date.parse(flow.expiresAt || '')
-      if (!['ordered', 'submitting'].includes(flow.state) && Number.isFinite(expiresAt) && expiresAt <= Date.now()) {
-        clearRedeemFlow()
-        this.requestNonce = createRequestNonce()
-        return
-      }
-
       const provider = normalizeProviderMode(flow.provider)
       this.providerMode = provider
       writeStoredProviderMode(provider)
@@ -453,13 +482,19 @@ export default {
     },
     switchProviderMode(provider) {
       const nextProvider = normalizeProviderMode(provider)
-      if (this.providerMode === nextProvider) return
+      if (this.providerMode === nextProvider) {
+        this.switchToExchange()
+        return
+      }
+      if (window.location.pathname !== '/' || window.location.search) window.history.pushState({ view: 'exchange' }, '', '/')
+      this.viewMode = 'exchange'
       this.providerMode = nextProvider
       writeStoredProviderMode(nextProvider)
       this.resetAll()
     },
     switchToQuery() {
       this.viewMode = 'query'
+      window.history.pushState({ view: 'query' }, '', '/?view=query')
     },
     switchToBilling() {
       this.viewMode = 'billing'
@@ -470,23 +505,50 @@ export default {
       window.history.pushState({ view: 'token-query' }, '', '/token-query')
     },
     switchToExchange() {
-      if (window.location.pathname !== '/') {
+      if (window.location.pathname !== '/' || window.location.search) {
         window.history.pushState({ view: 'exchange' }, '', '/')
       }
       this.viewMode = 'exchange'
       this.currentStep = 0
     },
     openTutorial() {
+      this.dialogTrigger = document.activeElement
+      this.helpOpen = false
       this.tutorialOpen = true
+      this.$nextTick(() => this.$refs.tutorialClose?.focus())
       document.body.style.overflow = 'hidden'
     },
     closeTutorial() {
+      this.$refs.tutorialVideo?.pause()
       this.tutorialOpen = false
       document.body.style.overflow = ''
+      this.dialogTrigger?.focus()
+    },
+    openHelp() {
+      this.dialogTrigger = document.activeElement
+      this.tutorialOpen = false
+      this.$refs.tutorialVideo?.pause()
+      this.helpOpen = true
+      document.body.style.overflow = 'hidden'
+      this.$nextTick(() => this.$refs.helpClose?.focus())
+    },
+    closeHelp() {
+      this.helpOpen = false
+      document.body.style.overflow = ''
+      this.dialogTrigger?.focus()
     },
     handleKeydown(event) {
-      if (event.key === 'Escape' && this.tutorialOpen) {
-        this.closeTutorial()
+      if (event.key === 'Escape') {
+        if (this.tutorialOpen) this.closeTutorial()
+        if (this.helpOpen) this.closeHelp()
+      }
+      if (event.key === 'Tab' && (this.tutorialOpen || this.helpOpen)) {
+        const dialog = this.$el.querySelector('[role="dialog"]')
+        const controls = [...dialog.querySelectorAll('button, video[controls]')]
+        const first = controls[0]
+        const last = controls[controls.length - 1]
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus() }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
       }
     },
     handlePopState() {

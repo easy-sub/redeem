@@ -318,9 +318,9 @@ body {
 
 .provider-switch {
   display: inline-grid;
-  grid-template-columns: repeat(2, minmax(88px, 1fr));
+  grid-template-columns: repeat(3, minmax(88px, 1fr));
   gap: 5px;
-  width: min(220px, 100%);
+  width: min(320px, 100%);
   padding: 5px;
   border: 1px solid rgba(31, 157, 114, 0.22);
   border-radius: 999px;
@@ -1120,6 +1120,181 @@ body {
   color: #85837c;
 }
 
+/* Grok 使用暖白背景与黑色主色，延续现有布局和控件尺寸。 */
+.app-container.provider-grok {
+  --ui-bg: #fffaf2;
+  --ui-card: #ffffff;
+  --ui-fill: #f7f1e8;
+  --ui-separator: #e9e1d6;
+  --ui-label: #171717;
+  --ui-label-secondary: #626262;
+  --ui-label-tertiary: #929292;
+  --ui-blue: #171717;
+  --ui-green: #171717;
+  --fresh-border: #e9e1d6;
+  --fresh-panel: #ffffff;
+  --fresh-soft: #fffdf8;
+  --fresh-mint: #f7f1e8;
+  --fresh-blue-soft: #f7f1e8;
+  --fresh-shadow: 0 18px 44px rgba(0, 0, 0, 0.08);
+  --fresh-shadow-soft: 0 8px 22px rgba(0, 0, 0, 0.05);
+  background: var(--ui-bg);
+}
+
+.app-container.provider-grok .brand-mark {
+  border-color: #d8d8d8;
+  background: #ffffff;
+  box-shadow: var(--fresh-shadow-soft);
+}
+
+.app-container.provider-grok .brand-mark img {
+  filter: grayscale(1);
+}
+
+.app-container.provider-grok .brand-copy strong,
+.app-container.provider-grok .nav-large-title,
+.app-container.provider-grok .nav-large-title span:last-child {
+  color: var(--ui-label);
+}
+
+.app-container.provider-grok .nav-large-title span:last-child::after {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.app-container.provider-grok .nav-subtitle,
+.app-container.provider-grok .header-action-button,
+.app-container.provider-grok .provider-switch button {
+  color: var(--ui-label-secondary);
+}
+
+.app-container.provider-grok .provider-switch,
+.app-container.provider-grok .header-actions,
+.app-container.provider-grok .hero-trust-badge,
+.app-container.provider-grok .ui-card,
+.app-container.provider-grok .query-input-card,
+.app-container.provider-grok .video-modal-panel {
+  border-color: var(--fresh-border);
+  background: #ffffff;
+  box-shadow: var(--fresh-shadow-soft);
+}
+
+.app-container.provider-grok .hero-trust-badge,
+.app-container.provider-grok .hero-trust-badge svg,
+.app-container.provider-grok .guide-steps a,
+.app-container.provider-grok .btn-plain,
+.app-container.provider-grok .flow-back-button,
+.app-container.provider-grok .query-back-button {
+  color: var(--ui-label);
+}
+
+.app-container.provider-grok .provider-switch button.active,
+.app-container.provider-grok .step-token .card-icon,
+.app-container.provider-grok .btn-filled,
+.app-container.provider-grok .order-success:not(.is-returned):not(.is-partial) .success-icon,
+.app-container.provider-grok .ui-alert-icon.is-completed {
+  border-color: #171717;
+  background: #171717;
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+}
+
+.app-container.provider-grok .header-action-button svg,
+.app-container.provider-grok .step-card .card-icon,
+.app-container.provider-grok .confirm-card .card-icon,
+.app-container.provider-grok .ui-alert-icon.is-running,
+.app-container.provider-grok .btn-tinted {
+  border-color: var(--fresh-border);
+  background: var(--ui-fill);
+  color: var(--ui-label);
+  box-shadow: none;
+}
+
+.app-container.provider-grok .header-action-button:hover,
+.app-container.provider-grok .flow-back-button:hover,
+.app-container.provider-grok .query-back-button:hover,
+.app-container.provider-grok .subpage-back-button:hover {
+  border-color: #b8b8b8;
+  background: var(--ui-fill);
+  color: var(--ui-label);
+  box-shadow: var(--fresh-shadow-soft);
+}
+
+.app-container.provider-grok .workflow-section .card-main::before,
+.app-container.provider-grok .workflow-section .confirm-card::before,
+.app-container.provider-grok .workflow-section .order-success::before {
+  background: #171717;
+}
+
+.app-container.provider-grok .ui-input:not(.has-error),
+.app-container.provider-grok .ui-textarea:not(.has-error) {
+  border-color: var(--fresh-border);
+  background: var(--fresh-soft);
+}
+
+.app-container.provider-grok .ui-input:focus:not(.has-error),
+.app-container.provider-grok .ui-textarea:focus:not(.has-error) {
+  border-color: #737373;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08);
+}
+
+.app-container.provider-grok .btn-filled:hover:not(:disabled) {
+  background: #383838;
+}
+
+.app-container.provider-grok .btn-filled:disabled {
+  background: #d4d4d4;
+  color: #737373;
+  box-shadow: none;
+}
+
+.app-container.provider-grok .btn-gray {
+  border-color: var(--fresh-border);
+  background: #ffffff;
+  color: var(--ui-label);
+}
+
+.app-container.provider-grok .progress-line,
+.app-container.provider-grok .ui-progress-track {
+  background: var(--ui-separator);
+}
+
+.app-container.provider-grok .step-circle,
+.app-container.provider-grok .progress-step.active .step-circle {
+  box-shadow: var(--fresh-shadow-soft);
+}
+
+.app-container.provider-grok .progress-step.completed .step-circle {
+  border-color: #c8c8c8;
+  background: var(--ui-fill);
+  color: var(--ui-label);
+}
+
+.app-container.provider-grok .ui-callout.is-info,
+.app-container.provider-grok .alert-details,
+.app-container.provider-grok .copy-account-button.is-copied {
+  border-color: var(--fresh-border);
+  background: var(--ui-fill);
+  color: var(--ui-label);
+}
+
+.app-container.provider-grok .ui-alert-action:active {
+  background: var(--ui-fill);
+}
+
+.app-container.provider-grok .video-modal,
+.app-container.provider-grok .alert-overlay {
+  background: rgba(0, 0, 0, 0.48);
+}
+
+.app-container.provider-grok .video-frame {
+  background: #111111;
+}
+
+.app-container.provider-grok .site-footer {
+  color: var(--ui-label-tertiary);
+}
+
 @media (max-width: 680px) {
   .app-container {
     padding: 14px 12px 22px;
@@ -1132,6 +1307,10 @@ body {
 
   .app-container.provider-openai {
     background: #f3faf6;
+  }
+
+  .app-container.provider-grok {
+    background: var(--ui-bg);
   }
 
   .app-container.provider-claude {
@@ -1218,8 +1397,8 @@ body {
   }
 
   .provider-switch {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    width: min(200px, 100%);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: min(300px, 100%);
     gap: 4px;
     padding: 4px;
   }
@@ -1266,4 +1445,84 @@ body {
   .site-footer {
     padding-top: 18px;
   }
+}
+
+/* 新增交互沿用现有主题，长错误网址保持完整且可换行。 */
+.ui-error-text,
+.error-with-copy,
+.alert-poll-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  max-width: 100%;
+}
+
+.ui-error-text > span,
+.ui-callout > span,
+.error-with-copy > span,
+.alert-poll-error > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.error-with-copy {
+  justify-content: center;
+}
+
+.copy-error-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  padding: 4px;
+  border: 1px solid currentColor;
+  border-radius: 5px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.copy-error-button:hover {
+  background: var(--ui-fill);
+}
+
+.copy-error-button:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.copy-error-button svg {
+  width: 15px;
+  height: 15px;
+}
+
+.help-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 20px;
+  color: var(--ui-label-secondary);
+  font-size: 13px;
+}
+
+.help-row .btn-plain {
+  padding: 2px 4px;
+  font-size: inherit;
+  line-height: 1.5;
+}
+
+.help-modal-panel {
+  max-width: 520px;
+}
+
+.help-modal-body {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  font-size: 14px;
+  line-height: 1.7;
 }

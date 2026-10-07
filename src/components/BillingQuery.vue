@@ -177,15 +177,18 @@ const PLAN_NAMES = {
   free: 'ChatGPT Free',
   go: 'ChatGPT Go',
   plus: 'ChatGPT Plus',
-  pro: 'ChatGPT Pro',
-  promax: 'ChatGPT Pro 50x',
-  prolite: 'ChatGPT Pro 5x',
+  pro: 'ChatGPT Pro 200',
+  promax: 'ChatGPT Pro 500',
+  prolite: 'ChatGPT Pro 100',
   chatgptfreeplan: 'ChatGPT Free',
   chatgptgoplan: 'ChatGPT Go',
   chatgptplusplan: 'ChatGPT Plus',
-  chatgptprolite: 'ChatGPT Pro 5x',
-  chatgptpro: 'ChatGPT Pro 20x',
-  chatgptpromax: 'ChatGPT Pro 50x'
+  chatgptprolite: 'ChatGPT Pro 100',
+  chatgptproliteplan: 'ChatGPT Pro 100',
+  chatgptpro: 'ChatGPT Pro 200',
+  chatgptproplan: 'ChatGPT Pro 200',
+  chatgpt2pro20x: 'ChatGPT Pro 200',
+  chatgptpromax: 'ChatGPT Pro 500'
 }
 
 export default {

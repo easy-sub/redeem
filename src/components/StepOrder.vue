@@ -47,6 +47,10 @@
             <line x1="12" y1="16" x2="12.01" y2="16"></line>
           </svg>
           <span>{{ error }}</span>
+          <button v-if="errorURL" type="button" class="copy-error-button" :title="getErrorCopyTitle('submit')" :aria-label="getErrorCopyTitle('submit')" @click="copyErrorURL('submit', errorURL)">
+            <Check v-if="isErrorCopySuccessful('submit')" :size="15" aria-hidden="true" />
+            <Copy v-else :size="15" aria-hidden="true" />
+          </button>
         </div>
 
         <div class="ui-callout is-danger">
@@ -98,7 +102,12 @@
           </svg>
         </div>
         <div class="success-title">{{ orderResultTitle }}</div>
-        <div class="success-subtitle">{{ orderResultSubtitle }}</div>
+        <div class="success-subtitle error-with-copy"><span>{{ orderResultSubtitle }}</span>
+          <button v-if="orderResultURL" type="button" class="copy-error-button" :title="getErrorCopyTitle('result')" :aria-label="getErrorCopyTitle('result')" @click="copyErrorURL('result', orderResultURL)">
+            <Check v-if="isErrorCopySuccessful('result')" :size="15" aria-hidden="true" />
+            <Copy v-else :size="15" aria-hidden="true" />
+          </button>
+        </div>
         <button
           v-if="canCopyAccountCard"
           type="button"
@@ -143,7 +152,12 @@
         </div>
         <div v-if="orderFailureMessage" class="ui-row">
           <span class="ui-row-label">失败原因</span>
-          <span class="ui-row-value status-error">{{ orderFailureMessage }}</span>
+          <span class="ui-row-value status-error error-with-copy"><span>{{ orderFailureMessage }}</span>
+            <button v-if="orderFailureURL" type="button" class="copy-error-button" :title="getErrorCopyTitle('order')" :aria-label="getErrorCopyTitle('order')" @click="copyErrorURL('order', orderFailureURL)">
+            <Check v-if="isErrorCopySuccessful('order')" :size="15" aria-hidden="true" />
+            <Copy v-else :size="15" aria-hidden="true" />
+          </button>
+          </span>
         </div>
         <div class="ui-row">
           <span class="ui-row-label">创建时间</span>
@@ -175,7 +189,12 @@
               <span v-else class="ui-spinner alert-spinner"></span>
             </div>
             <div class="ui-alert-title">{{ progressDialogTitle }}</div>
-            <div class="ui-alert-message">{{ progressDialogSubtitle }}</div>
+            <div class="ui-alert-message error-with-copy"><span>{{ progressDialogSubtitle }}</span>
+              <button v-if="progressDialogURL" type="button" class="copy-error-button" :title="getErrorCopyTitle('progress')" :aria-label="getErrorCopyTitle('progress')" @click="copyErrorURL('progress', progressDialogURL)">
+            <Check v-if="isErrorCopySuccessful('progress')" :size="15" aria-hidden="true" />
+            <Copy v-else :size="15" aria-hidden="true" />
+          </button>
+            </div>
 
             <div class="alert-progress">
               <div class="ui-progress-track">
@@ -227,7 +246,11 @@
               class="alert-poll-error"
               :class="{ 'is-returned': isCardReturned }"
             >
-              {{ pollError }}
+              <span>{{ pollError }}</span>
+              <button v-if="pollErrorURL" type="button" class="copy-error-button" :title="getErrorCopyTitle('poll')" :aria-label="getErrorCopyTitle('poll')" @click="copyErrorURL('poll', pollErrorURL)">
+            <Check v-if="isErrorCopySuccessful('poll')" :size="15" aria-hidden="true" />
+            <Copy v-else :size="15" aria-hidden="true" />
+          </button>
             </div>
           </div>
 
@@ -253,6 +276,7 @@ import {
   getOrderStatusText,
   normalizeOrderStatus
 } from '../constants/orderStatus'
+import { extractErrorURL } from '../utils/errorUrl'
 
 const PROGRESS_DURATION = 30000
 const PROGRESS_INTERVAL = 200
@@ -286,6 +310,10 @@ export default {
       type: Object,
       default: null
     },
+    requestNonce: {
+      type: String,
+      default: ''
+    },
     tokenInfo: {
       type: Object,
       default: null
@@ -299,7 +327,7 @@ export default {
       default: null
     }
   },
-  emits: ['completed', 'reset', 'submitting', 'submit-failed'],
+  emits: ['completed', 'reset', 'submitting', 'submit-failed', 'card-verified'],
   data() {
     return {
       orderInfo: this.initialOrder,
@@ -313,6 +341,8 @@ export default {
       pollTimer: null,
       copyFeedback: '',
       copyResetTimer: null,
+      copyErrorFeedback: '',
+      copyErrorResetTimer: null,
       progressStartedAt: 0,
       retryProgressStarted: false
     }
@@ -336,7 +366,7 @@ export default {
       return this.orderInfo ? normalizeOrderStatus(this.orderInfo.status) : ORDER_STATUS.PENDING
     },
     providerLabel() {
-      return String(this.provider || '').toLowerCase() === 'claude' ? 'Claude' : 'ChatGPT'
+      return ({ openai: 'ChatGPT', claude: 'Claude', grok: 'Grok' })[String(this.provider || '').toLowerCase()] || 'ChatGPT'
     },
     isFinalCompleted() {
       return this.currentOrderStatus === ORDER_STATUS.COMPLETED
@@ -384,7 +414,7 @@ export default {
       if (this.isFinalCompleted) return `后台已确认${this.redemptionLabel}完成`
       if (this.isPartialClosed) return this.orderFailureMessage || '基础套餐已保留，CDK 已兑换'
       if (this.isCardReturned) return this.orderFailureMessage || '订单未完成，CDK 已恢复可用'
-      if (this.isFinalException) return '后台返回异常结果，请联系客服处理'
+      if (this.isFinalException) return this.orderFailureMessage || '后台返回异常结果，请联系客服处理'
       if (this.isPaymentResultChecking) return '系统正在确认支付结果，请继续等待'
       if (this.isRetrying) return '系统正在重新尝试，请继续等待'
       return this.currentProgressTip
@@ -411,6 +441,21 @@ export default {
       if (!this.isPartialClosed && !this.isCardReturned && !this.isFinalException) return ''
       return this.orderInfo.returnedMessage || this.orderInfo.message || ''
     },
+    errorURL() {
+      return extractErrorURL(this.error)
+    },
+    orderFailureURL() {
+      return extractErrorURL(this.orderFailureMessage)
+    },
+    progressDialogURL() {
+      return extractErrorURL(this.progressDialogSubtitle)
+    },
+    orderResultURL() {
+      return extractErrorURL(this.orderResultSubtitle)
+    },
+    pollErrorURL() {
+      return extractErrorURL(this.pollError)
+    },
     paymentCardLastFour() {
       const digits = String(this.orderInfo && this.orderInfo.paymentCard || '').match(/\d/g)
       return digits && digits.length >= 4 ? digits.slice(-4).join('') : ''
@@ -423,7 +468,7 @@ export default {
       return [
         `目标账号　：${this.orderInfo.email}`,
         `支付卡尾号：${this.paymentCardLastFour}`,
-        `${this.productFieldLabel}：${this.orderInfo.productName}`,
+        `${this.productFieldLabel.padEnd(5, '　')}：${this.orderInfo.productName}`,
         `订阅时间　：${this.formatSubscriptionTime(this.orderInfo.finishedTime)}`,
         `当前状态　：${this.getStatusText(this.orderInfo.status)}`
       ].join('\n')
@@ -432,6 +477,7 @@ export default {
   beforeUnmount() {
     this.stopProgressTracking()
     this.resetCopyFeedback()
+    this.resetCopyErrorFeedback()
   },
   mounted() {
     if (this.orderInfo) {
@@ -478,29 +524,70 @@ export default {
         'is-error': this.copyFeedback === `${source}:error`
       }
     },
+    async copyErrorURL(source, value) {
+      if (!value) return
+      try {
+        await navigator.clipboard.writeText(value)
+        this.setCopyErrorFeedback(`${source}:success`)
+      } catch {
+        this.setCopyErrorFeedback(`${source}:error`)
+      }
+    },
+    setCopyErrorFeedback(feedback) {
+      this.resetCopyErrorFeedback()
+      this.copyErrorFeedback = feedback
+      this.copyErrorResetTimer = setTimeout(() => {
+        this.copyErrorFeedback = ''
+        this.copyErrorResetTimer = null
+      }, 1600)
+    },
+    resetCopyErrorFeedback() {
+      if (this.copyErrorResetTimer) {
+        clearTimeout(this.copyErrorResetTimer)
+        this.copyErrorResetTimer = null
+      }
+      this.copyErrorFeedback = ''
+    },
+    isErrorCopySuccessful(source) {
+      return this.copyErrorFeedback === `${source}:success`
+    },
+    getErrorCopyTitle(source) {
+      if (this.isErrorCopySuccessful(source)) return '已复制网址'
+      if (this.copyErrorFeedback === `${source}:error`) return '复制失败，请重试'
+      return '复制网址'
+    },
     async submitOrder() {
+      if (this.loading) return
       this.loading = true
       this.orderInfo = null
       this.error = ''
       this.pollError = ''
+      this.resetCopyErrorFeedback()
       this.$emit('submitting')
 
-      const response = await createOrder(this.cardCode, this.token, this.tokenInfo, this.cardInfo)
+      try {
+        const response = await createOrder(
+          this.cardCode, this.token, this.tokenInfo, this.cardInfo, this.requestNonce,
+          (cardInfo) => this.$emit('card-verified', cardInfo)
+        )
 
-      if (response.code === 200) {
-        this.orderInfo = response.data
-        this.$emit('completed', response.data)
-        this.openProgressDialog()
-      } else {
-        this.error = response.uncertain
-          ? response.message
-          : response.message || response.error || '订阅兑换失败'
-        if (!response.uncertain) {
-          this.$emit('submit-failed')
+        if (response.code === 200) {
+          this.orderInfo = response.data
+          this.$emit('completed', response.data)
+          this.openProgressDialog()
+        } else {
+          this.error = response.uncertain
+            ? response.message
+            : response.message || response.error || '订阅兑换失败'
+          if (!response.uncertain) {
+            this.$emit('submit-failed')
+          }
         }
+      } catch {
+        this.error = '提交结果暂未确认，请保持当前页面并重新点击确认提交'
+      } finally {
+        this.loading = false
       }
-
-      this.loading = false
     },
     getStatusClass(status) {
       return getOrderStatusClass(status)

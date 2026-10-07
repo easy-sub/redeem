@@ -1,6 +1,6 @@
 <template>
   <div class="step-token">
-    <div class="ui-card card-main">
+    <form class="ui-card card-main" @submit.prevent="validateToken">
       <div class="card-icon-row">
         <div class="card-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -11,8 +11,8 @@
           </svg>
         </div>
         <div>
-          <div class="card-title">{{ isClaude ? '输入 Claude sessionKey' : '输入会话数据' }}</div>
-          <div class="card-desc">{{ isClaude ? '粘贴 Claude 账号的 sessionKey' : '粘贴 ChatGPT 账号的 session JSON' }}</div>
+          <div class="card-title">{{ isGrok ? '输入 Grok SSO' : isClaude ? '输入 Claude sessionKey' : '输入会话数据' }}</div>
+          <div class="card-desc">{{ isGrok ? '粘贴 Grok 账号的 SSO Cookie' : isClaude ? '粘贴 Claude 账号的 sessionKey' : '粘贴 ChatGPT 账号的 session JSON' }}</div>
         </div>
       </div>
 
@@ -23,8 +23,12 @@
           <line x1="12" y1="8" x2="12.01" y2="8"></line>
         </svg>
         <div>
-          <div class="ui-callout-title">{{ isClaude ? '如何获取 sessionKey？' : '如何获取 Token 数据？' }}</div>
-          <ol v-if="!isClaude" class="guide-steps">
+          <div class="ui-callout-title">{{ isGrok ? '如何获取 Grok SSO？' : isClaude ? '如何获取 sessionKey？' : '如何获取 Token 数据？' }}</div>
+          <ol v-if="isGrok" class="guide-steps">
+            <li>打开 <a href="https://grok.com" target="_blank" rel="noopener noreferrer">grok.com</a> 登录需兑换的 Grok 账号</li>
+            <li>在浏览器开发者工具的 Cookie 中复制 <span class="inline-code">sso</span> 的值，也支持 Cookie JSON 或 sso=TOKEN</li>
+          </ol>
+          <ol v-else-if="!isClaude" class="guide-steps">
             <li>打开 <a href="https://chatgpt.com" target="_blank" rel="noopener noreferrer">chatgpt.com</a> 登录需兑换的 ChatGPT 账号</li>
             <li>访问 <a href="https://chatgpt.com/api/auth/session" target="_blank" rel="noopener noreferrer">chatgpt.com/api/auth/session</a>，复制页面中的全部 JSON 数据</li>
           </ol>
@@ -39,10 +43,13 @@
         <textarea
           id="token"
           v-model="token"
-          :aria-label="isClaude ? 'Claude sessionKey' : 'Session JSON'"
+          :aria-label="isGrok ? 'Grok SSO' : isClaude ? 'Claude sessionKey' : 'Session JSON'"
           :placeholder="tokenPlaceholder"
           class="ui-textarea"
           :class="{ 'has-error': error }"
+          autocomplete="off"
+          autocapitalize="off"
+          spellcheck="false"
           rows="4"
         ></textarea>
         <div v-if="error" class="ui-error-text">
@@ -52,18 +59,22 @@
             <line x1="12" y1="16" x2="12.01" y2="16"></line>
           </svg>
           <span>{{ error }}</span>
+          <button v-if="errorURL" type="button" class="copy-error-button" :title="copyErrorTitle" :aria-label="copyErrorTitle" @click="copyErrorURL">
+            <Check v-if="copyErrorStatus === 'success'" :size="15" aria-hidden="true" />
+            <Copy v-else :size="15" aria-hidden="true" />
+          </button>
         </div>
       </div>
 
       <button
-        @click="validateToken"
+        type="submit"
         class="btn-filled"
         :disabled="!token.trim() || loading"
       >
         <span v-if="loading" class="ui-spinner"></span>
         {{ loading ? '验证中…' : '校验并继续' }}
       </button>
-    </div>
+    </form>
 
     <template v-if="tokenInfo">
       <div class="ui-card ui-list token-info">
@@ -113,10 +124,14 @@
 </template>
 
 <script>
+import { Check, Copy } from '@lucide/vue'
 import { validateToken } from '../services/api'
+import { extractErrorURL } from '../utils/errorUrl'
 
 export default {
   name: 'StepToken',
+  emits: ['validated', 'card-verified'],
+  components: { Check, Copy },
   props: {
     provider: {
       type: String,
@@ -129,6 +144,10 @@ export default {
     cardInfo: {
       type: Object,
       default: null
+    },
+    requestNonce: {
+      type: String,
+      default: ''
     }
   },
   data() {
@@ -136,21 +155,53 @@ export default {
       token: '',
       tokenInfo: null,
       error: '',
-      loading: false
+      loading: false,
+      copyErrorStatus: '',
+      copyErrorTimer: null
     }
   },
   computed: {
+    isGrok() { return this.provider === 'grok' },
     isClaude() {
       return String(this.provider || '').toLowerCase() === 'claude'
     },
     tokenPlaceholder() {
-      return this.isClaude ? '粘贴 Claude sessionKey' : '例如：{"user":{"email":"test@example.com"}}'
+      return this.isGrok ? '粘贴 Grok sso Cookie 的值、sso=TOKEN 或 Cookie JSON' : this.isClaude ? '粘贴 Claude sessionKey' : '粘贴完整的 Session JSON 内容…'
+    },
+    copyErrorTitle() {
+      if (this.copyErrorStatus === 'success') return '已复制网址'
+      if (this.copyErrorStatus === 'error') return '复制失败，请重试'
+      return '复制网址'
+    },
+    errorURL() {
+      return extractErrorURL(this.error)
     }
   },
+  beforeUnmount() {
+    this.resetCopyErrorStatus()
+  },
   methods: {
+    async copyErrorURL() {
+      if (!this.errorURL) return
+      try {
+        await navigator.clipboard.writeText(this.errorURL)
+        this.copyErrorStatus = 'success'
+        clearTimeout(this.copyErrorTimer)
+        this.copyErrorTimer = setTimeout(() => { this.copyErrorStatus = '' }, 1600)
+      } catch {
+        this.copyErrorStatus = 'error'
+      }
+    },
+    resetCopyErrorStatus() {
+      if (this.copyErrorTimer) clearTimeout(this.copyErrorTimer)
+      this.copyErrorTimer = null
+      this.copyErrorStatus = ''
+    },
     async validateToken() {
+      if (this.loading || !this.token.trim()) return
       this.loading = true
       this.error = ''
+      this.resetCopyErrorStatus()
       this.tokenInfo = null
 
       try {
@@ -158,14 +209,15 @@ export default {
           this.token,
           this.provider,
           this.cardCode,
-          this.cardInfo && this.cardInfo.activationToken
+          this.cardInfo && this.cardInfo.activationToken,
+          this.requestNonce,
+          (cardInfo) => this.$emit('card-verified', cardInfo)
         )
 
         if (response.code === 200) {
           this.tokenInfo = response.data
           this.$emit('validated', { token: response.data.redeemToken, tokenInfo: response.data })
         } else {
-          this.tokenInfo = response.data || null
           this.error = response.message || '账号校验失败，请重新提交'
         }
       } catch {
@@ -178,30 +230,40 @@ export default {
       const types = {
         'free': 'Free',
         'go': 'Go',
-        'prolite': 'Pro Lite',
-        'pro': 'Pro',
-        'promax': 'Pro 50x',
+        'prolite': 'Pro 100',
+        'pro': 'Pro 200',
+        'promax': 'Pro 500',
         'plus': 'Plus',
         'team': 'Team',
         'self_serve_business_usage_based': 'Business Usage',
         'enterprise': '企业版',
         'claude': 'Claude',
-        'unknown': '未知'
+        'unknown': '未知',
+        'PRODUCT_TIER_SUPER_GROK_LITE': 'SuperGrok Lite',
+        'PRODUCT_TIER_GROK_PRO': 'SuperGrok',
+        'PRODUCT_TIER_SUPER_GROK_PLUS': 'SuperGrok Plus',
+        'PRODUCT_TIER_SUPER_GROK_PRO': 'SuperGrok Heavy',
+
       }
       return types[type] || type
     },
     formatSubscriptionPlan(plan) {
       const plans = {
         'chatgptfreeplan': 'ChatGPT Free',
+        'product_tier_super_grok_lite': 'SuperGrok Lite',
+        'product_tier_grok_pro': 'SuperGrok',
+        'product_tier_super_grok_plus': 'SuperGrok Plus',
+        'product_tier_super_grok_pro': 'SuperGrok Heavy',
+
         'chatgptfreeworkspaceplan': 'ChatGPT Free Workspace',
         'chatgptgoplan': 'ChatGPT Go',
-        'chatgpt2pro20x': 'ChatGPT Pro 20x',
+        'chatgpt2pro20x': 'ChatGPT Pro 200',
         'chatgptplusplan': 'ChatGPT Plus',
-        'chatgptprolite': 'ChatGPT Pro Lite',
-        'chatgptproliteplan': 'ChatGPT Pro Lite',
-        'chatgptpro': 'ChatGPT Pro',
-        'chatgptpromax': 'ChatGPT Pro 50x',
-        'chatgptproplan': 'ChatGPT Pro',
+        'chatgptprolite': 'ChatGPT Pro 100',
+        'chatgptproliteplan': 'ChatGPT Pro 100',
+        'chatgptpro': 'ChatGPT Pro 200',
+        'chatgptpromax': 'ChatGPT Pro 500',
+        'chatgptproplan': 'ChatGPT Pro 200',
         'chatgptteamplan': 'ChatGPT Team',
         'chatgptbusinessplan': 'ChatGPT Team',
         'chatgptenterpriseplan': 'ChatGPT Enterprise'
