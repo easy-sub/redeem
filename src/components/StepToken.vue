@@ -239,10 +239,10 @@ export default {
         'enterprise': '企业版',
         'claude': 'Claude',
         'unknown': '未知',
-        'PRODUCT_TIER_SUPER_GROK_LITE': 'SuperGrok Lite',
-        'PRODUCT_TIER_GROK_PRO': 'SuperGrok',
-        'PRODUCT_TIER_SUPER_GROK_PLUS': 'SuperGrok Plus',
-        'PRODUCT_TIER_SUPER_GROK_PRO': 'SuperGrok Heavy',
+        'grok_plus': 'Plus',
+        'grok_premium': 'Premium',
+        'grok_super': 'Super',
+        'grok_ultra': 'Ultra',
 
       }
       return types[type] || type
@@ -250,10 +250,10 @@ export default {
     formatSubscriptionPlan(plan) {
       const plans = {
         'chatgptfreeplan': 'ChatGPT Free',
-        'product_tier_super_grok_lite': 'SuperGrok Lite',
-        'product_tier_grok_pro': 'SuperGrok',
-        'product_tier_super_grok_plus': 'SuperGrok Plus',
-        'product_tier_super_grok_pro': 'SuperGrok Heavy',
+        'grok_plus': 'Plus',
+        'grok_premium': 'Premium',
+        'grok_super': 'Super',
+        'grok_ultra': 'Ultra',
 
         'chatgptfreeworkspaceplan': 'ChatGPT Free Workspace',
         'chatgptgoplan': 'ChatGPT Go',
