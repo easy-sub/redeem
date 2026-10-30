@@ -39,14 +39,28 @@
         </div>
       </div>
 
-      <div class="input-group">
+      <div v-if="provider === 'openai'" class="session-import">
+        <input ref="sessionFile" class="session-file-input" type="file" accept=".txt,.json,.md,.rtf,.trf,.doc,.docx" aria-label="导入 Session 文件" :disabled="loading || importing" @change="importSession">
+        <button type="button" class="session-import-button" :disabled="loading || importing" @click="$refs.sessionFile.click()">{{ importing ? '正在读取…' : '导入文本 / Word 文件' }}</button>
+        <span class="import-hint">支持 TXT、JSON、MD、RTF/TRF、DOC、DOCX，最大 5 MB；仅在本地读取。</span>
+        <p v-if="importNotice" class="import-notice" role="status">{{ importNotice }}</p>
+      </div>
+      <div
+        class="input-group"
+        @dragenter="handleSessionDragOver"
+        @dragover="handleSessionDragOver"
+        @dragleave="handleSessionDragLeave"
+        @drop="handleSessionDrop"
+      >
         <textarea
           id="token"
           v-model="token"
+          :disabled="importing || loading"
+          @input="importNotice = ''"
           :aria-label="isGrok ? 'Grok SSO' : isClaude ? 'Claude sessionKey' : 'Session JSON'"
           :placeholder="tokenPlaceholder"
           class="ui-textarea"
-          :class="{ 'has-error': error }"
+          :class="{ 'has-error': error, 'is-dragging': draggingSession }"
           autocomplete="off"
           autocapitalize="off"
           spellcheck="false"
@@ -69,7 +83,7 @@
       <button
         type="submit"
         class="btn-filled"
-        :disabled="!token.trim() || loading"
+        :disabled="!token.trim() || loading || importing"
       >
         <span v-if="loading" class="ui-spinner"></span>
         {{ loading ? '验证中…' : '校验并继续' }}
@@ -127,6 +141,7 @@
 import { Check, Copy } from '@lucide/vue'
 import { validateToken } from '../services/api'
 import { extractErrorURL } from '../utils/errorUrl'
+import { createSessionImportTask } from '../utils/sessionImportTask'
 
 export default {
   name: 'StepToken',
@@ -156,6 +171,11 @@ export default {
       tokenInfo: null,
       error: '',
       loading: false,
+      importing: false,
+      draggingSession: false,
+      importVersion: 0,
+      importTask: null,
+      importNotice: '',
       copyErrorStatus: '',
       copyErrorTimer: null
     }
@@ -166,7 +186,7 @@ export default {
       return String(this.provider || '').toLowerCase() === 'claude'
     },
     tokenPlaceholder() {
-      return this.isGrok ? '粘贴 Grok sso Cookie 的值、sso=TOKEN 或 Cookie JSON' : this.isClaude ? '粘贴 Claude sessionKey' : '粘贴完整的 Session JSON 内容…'
+      return this.isGrok ? '粘贴 Grok sso Cookie 的值、sso=TOKEN 或 Cookie JSON' : this.isClaude ? '粘贴 Claude sessionKey' : '粘贴完整的 Session JSON，或拖拽文件到此处…'
     },
     copyErrorTitle() {
       if (this.copyErrorStatus === 'success') return '已复制网址'
@@ -178,9 +198,68 @@ export default {
     }
   },
   beforeUnmount() {
+    this.importVersion++
+    this.importTask?.cancel()
     this.resetCopyErrorStatus()
   },
   methods: {
+    // handleSessionDragOver 只接管 ChatGPT 文件拖拽，保留普通文本拖拽的浏览器行为。
+    handleSessionDragOver(event) {
+      if (this.provider !== 'openai' || !Array.from(event.dataTransfer?.types || []).includes('Files')) return
+      event.preventDefault()
+      this.draggingSession = !this.loading && !this.importing
+      event.dataTransfer.dropEffect = this.draggingSession ? 'copy' : 'none'
+    },
+    // handleSessionDragLeave 仅在离开整个输入区域时取消高亮，避免子元素间移动闪烁。
+    handleSessionDragLeave(event) {
+      if (!event.currentTarget.contains(event.relatedTarget)) this.draggingSession = false
+    },
+    // handleSessionDrop 拒绝多文件和文件夹，单文件复用选择文件的导入流程，不自动校验。
+    async handleSessionDrop(event) {
+      this.draggingSession = false
+      if (this.provider !== 'openai') return
+      const transfer = event.dataTransfer
+      if (!Array.from(transfer?.types || []).includes('Files') && !transfer?.files?.length) return
+      event.preventDefault()
+      if (this.loading || this.importing) return
+      if (transfer.files.length !== 1) {
+        this.error = '请一次拖入一个文件，不支持多个文件或文件夹'
+        this.importNotice = ''
+        return
+      }
+      await this.loadSessionFile(transfer.files[0])
+    },
+    // importSession 读取选择器文件并清空选择状态，允许重复选择同一文件重试。
+    async importSession(event) {
+      const input = event.target
+      const file = input.files?.[0]
+      input.value = ''
+      await this.loadSessionFile(file)
+    },
+    // loadSessionFile 统一处理点击与拖拽导入，失败保留原输入，离开后丢弃异步结果。
+    async loadSessionFile(file) {
+      if (!file || this.provider !== 'openai' || this.loading || this.importing) return
+      const version = ++this.importVersion
+      this.importing = true
+      this.error = ''
+      this.importNotice = ''
+      this.resetCopyErrorStatus()
+      try {
+        this.importTask = createSessionImportTask(file)
+        const session = await this.importTask.promise
+        if (version !== this.importVersion || this.provider !== 'openai') return
+        this.token = session
+        this.tokenInfo = null
+        this.importNotice = '已提取一份 Session，请确认账号后点击「校验账号」。'
+      } catch (error) {
+        if (version === this.importVersion) this.error = error.message || '文件导入失败，请重新保存后重试'
+      } finally {
+        if (version === this.importVersion) {
+          this.importing = false
+          this.importTask = null
+        }
+      }
+    },
     async copyErrorURL() {
       if (!this.errorURL) return
       try {
@@ -198,7 +277,7 @@ export default {
       this.copyErrorStatus = ''
     },
     async validateToken() {
-      if (this.loading || !this.token.trim()) return
+      if (this.loading || this.importing || !this.token.trim()) return
       this.loading = true
       this.error = ''
       this.resetCopyErrorStatus()
@@ -421,4 +500,10 @@ export default {
     padding: 16px 14px;
   }
 }
+.ui-textarea.is-dragging { border-color: var(--ui-blue); background: var(--ui-fill); outline: 2px dashed var(--ui-blue); outline-offset: 3px; }
+.session-import { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.session-file-input { display: none; }
+.session-import-button { padding: 7px 12px; border: 1px solid var(--ui-separator); border-radius: 7px; background: var(--ui-card); color: var(--ui-label); font-size: 12px; }
+.import-hint, .import-notice { color: var(--ui-label-secondary); font-size: 12px; line-height: 1.6; }
+.import-notice { flex-basis: 100%; margin: 0; }
 </style>

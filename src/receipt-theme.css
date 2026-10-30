@@ -328,7 +328,8 @@ body {
   box-shadow: 0 10px 24px rgba(39, 72, 57, 0.08);
 }
 
-.provider-switch button {
+.provider-switch a {
+  text-decoration: none;
   min-height: 38px;
   padding: 0 14px;
   border: 0;
@@ -346,13 +347,13 @@ body {
   transition: background 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
 }
 
-.provider-switch button.active {
+.provider-switch a.active {
   background: #10a37f;
   color: #ffffff;
   box-shadow: 0 8px 18px rgba(31, 157, 114, 0.18);
 }
 
-.provider-switch button:active {
+.provider-switch a:active {
   transform: translateY(1px);
 }
 
@@ -682,11 +683,11 @@ body {
   box-shadow: 0 10px 24px rgba(39, 72, 57, 0.08);
 }
 
-.app-container.provider-openai .provider-switch button {
+.app-container.provider-openai .provider-switch a {
   color: #61726a;
 }
 
-.app-container.provider-openai .provider-switch button.active {
+.app-container.provider-openai .provider-switch a.active {
   background: #10a37f;
   color: #ffffff;
   box-shadow: 0 8px 18px rgba(31, 157, 114, 0.18);
@@ -911,11 +912,11 @@ body {
   box-shadow: 0 10px 24px rgba(20, 20, 19, 0.08);
 }
 
-.app-container.provider-claude .provider-switch button {
+.app-container.provider-claude .provider-switch a {
   color: #686761;
 }
 
-.app-container.provider-claude .provider-switch button.active {
+.app-container.provider-claude .provider-switch a.active {
   background: #d97757;
   color: #ffffff;
   box-shadow: 0 8px 18px rgba(217, 119, 87, 0.24);
@@ -1163,7 +1164,7 @@ body {
 
 .app-container.provider-grok .nav-subtitle,
 .app-container.provider-grok .header-action-button,
-.app-container.provider-grok .provider-switch button {
+.app-container.provider-grok .provider-switch a {
   color: var(--ui-label-secondary);
 }
 
@@ -1187,7 +1188,7 @@ body {
   color: var(--ui-label);
 }
 
-.app-container.provider-grok .provider-switch button.active,
+.app-container.provider-grok .provider-switch a.active,
 .app-container.provider-grok .step-token .card-icon,
 .app-container.provider-grok .btn-filled,
 .app-container.provider-grok .order-success:not(.is-returned):not(.is-partial) .success-icon,
@@ -1403,7 +1404,7 @@ body {
     padding: 4px;
   }
 
-  .provider-switch button {
+  .provider-switch a {
     min-height: 36px;
     padding: 0 10px;
     font-size: 13px;

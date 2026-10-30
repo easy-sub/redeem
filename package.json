@@ -13,6 +13,9 @@
   "dependencies": {
     "@bokuweb/zstd-wasm": "^0.0.27",
     "@lucide/vue": "^1.59.0",
+    "@xmldom/xmldom": "^0.9.12",
+    "cfb": "^1.2.2",
+    "fflate": "^0.8.3",
     "vue": "^3.5.44"
   },
   "devDependencies": {

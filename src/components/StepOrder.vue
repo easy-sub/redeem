@@ -327,7 +327,7 @@ export default {
       default: null
     }
   },
-  emits: ['completed', 'reset', 'submitting', 'submit-failed', 'card-verified'],
+  emits: ['completed', 'reset', 'card-verified'],
   data() {
     return {
       orderInfo: this.initialOrder,
@@ -563,7 +563,6 @@ export default {
       this.error = ''
       this.pollError = ''
       this.resetCopyErrorFeedback()
-      this.$emit('submitting')
 
       try {
         const response = await createOrder(
@@ -579,9 +578,6 @@ export default {
           this.error = response.uncertain
             ? response.message
             : response.message || response.error || '订阅兑换失败'
-          if (!response.uncertain) {
-            this.$emit('submit-failed')
-          }
         }
       } catch {
         this.error = '提交结果暂未确认，请保持当前页面并重新点击确认提交'

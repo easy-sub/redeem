@@ -82,7 +82,7 @@ import { extractErrorURL } from '../utils/errorUrl'
 export default {
   name: 'StepCard',
   components: { Check, Copy },
-  emits: ['validated', 'validating'],
+  emits: ['validated'],
   props: {
     provider: {
       type: String,
@@ -143,7 +143,6 @@ export default {
     },
     async validateCard() {
       if (this.loading || !this.inputCardCode.trim()) return
-      this.$emit('validating')
       this.loading = true
       this.error = ''
       this.resetCopyErrorStatus()

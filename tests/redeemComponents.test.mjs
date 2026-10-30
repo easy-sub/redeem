@@ -3,7 +3,6 @@ import { webcrypto } from 'node:crypto'
 import { before, after, test } from 'node:test'
 import { createServer } from 'vite'
 import { extractErrorURL } from '../src/utils/errorUrl.js'
-import { readRedeemFlow, writeRedeemFlow } from '../src/utils/redeemFlow.js'
 
 let server
 let App
@@ -79,7 +78,6 @@ test('查询视图支持刷新和历史返回，返回兑换时移除查询参�
 
 test('从查询页切换 Grok 会回到兑换并重置旧厂商流程', (t) => {
   setupWindow(t, '/?view=query')
-  writeRedeemFlow({ cdk: 'OLD', requestNonce: 'old-nonce' })
   const { instance: app } = component(App)
   app.cardData = { cardCode: 'OLD', cardInfo: { provider: 'openai' } }
   app.switchProviderMode('grok')
@@ -87,30 +85,21 @@ test('从查询页切换 Grok 会回到兑换并重置旧厂商流程', (t) => {
   assert.equal(app.viewMode, 'exchange')
   assert.equal(window.location.search, '')
   assert.equal(app.cardData.cardCode, '')
-  assert.equal(readRedeemFlow(), null)
+  assert.equal(window.location.pathname, '/grok')
   assert.equal(component(App).instance.providerMode, 'grok')
 })
 
-test('刷新过期兑换流程仍按原 nonce 恢复校验', async (t) => {
-  setupWindow(t)
-  writeRedeemFlow({
-    state: 'reserved', cdk: 'CDK', requestNonce: 'same-nonce', provider: 'grok',
-    expiresAt: '2020-01-01T00:00:00Z',
-  })
-  let calls = 0
-  t.mock.method(globalThis, 'fetch', async (_url, options) => {
-    calls++
-    const payload = JSON.parse(options.body)
-    assert.equal(payload.request_nonce, 'same-nonce')
-    assert.equal(payload.expected_provider, 'grok')
-    return { status: 200, json: async () => ({ code: 200, provider: 'grok', activation_token: 'fresh-token' }) }
-  })
+test('刷新从当前平台第一步开始，不读取旧进度或请求校验', async (t) => {
+  setupWindow(t, '/claude')
+  window.sessionStorage.getItem = () => assert.fail('不应读取兑换进度')
+  window.addEventListener = () => {}
+  t.mock.method(globalThis, 'fetch', () => assert.fail('刷新不应请求校验'))
   const { instance: app } = component(App)
-  await app.restoreRedeemFlow()
-  assert.equal(calls, 1)
-  assert.equal(app.currentStep, 1)
-  assert.equal(app.cardData.cardInfo.activationToken, 'fresh-token')
-  assert.equal(readRedeemFlow().requestNonce, 'same-nonce')
+  await App.mounted.call(app)
+  assert.equal(app.providerMode, 'claude')
+  assert.equal(app.currentStep, 0)
+  assert.equal(app.cardData.cardCode, '')
+  assert.equal(app.orderData, null)
 })
 
 test('提交结果待确认时释放 loading，连续点击只查询一次', async (t) => {
@@ -134,7 +123,7 @@ test('提交结果待确认时释放 loading，连续点击只查询一次', asy
   await pending
   assert.equal(order.loading, false)
   assert.match(order.error, /暂未确认/)
-  assert.deepEqual(events.map(([name]) => name), ['submitting'])
+  assert.deepEqual(events, [])
 })
 
 test('账号校验失败时收起旧信息并保留完整 KYC 错误', async (t) => {
@@ -155,15 +144,17 @@ test('账号校验失败时收起旧信息并保留完整 KYC 错误', async (t)
   assert.equal(events.length, 0)
 })
 
-test('续期后的凭据持久化后可用于刷新恢复', (t) => {
+test('重新校验只更新当前页面凭据，不持久化兑换进度', (t) => {
   setupWindow(t)
+  window.sessionStorage.setItem = () => assert.fail('不应保存兑换进度')
   const { instance: app } = component(App)
   app.currentStep = 2
   app.cardData = { cardCode: 'CDK', cardInfo: { activationToken: 'expired' } }
-  app.handleCardReverified({ activationToken: 'fresh', expiresAt: '2030-01-01T00:00:00Z' })
-  assert.equal(readRedeemFlow().state, 'submitting')
-  assert.equal(readRedeemFlow().cardInfo.activationToken, 'fresh')
-  assert.equal(readRedeemFlow().cdk, 'CDK')
+  const refreshedCard = { activationToken: 'fixture-fresh', expiresAt: '2030-01-01T00:00:00Z' }
+  app.handleCardReverified(refreshedCard)
+  assert.equal(app.cardData.cardInfo, refreshedCard)
+  assert.equal(app.cardData.cardCode, 'CDK')
+  assert.equal(app.currentStep, 2)
 })
 
 test('说明弹窗限制 Tab、Escape 关闭并恢复焦点，教程关闭暂停视频', (t) => {

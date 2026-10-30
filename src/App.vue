@@ -77,30 +77,16 @@
       >
         <div v-if="isExchangeMode" class="provider-switch-row">
           <div class="provider-switch" aria-label="选择兑换服务">
-            <button
-              type="button"
-              :class="{ active: providerMode === 'openai' }"
-              :aria-pressed="providerMode === 'openai'"
-              @click="switchProviderMode('openai')"
+            <a
+              v-for="item in [{ key: 'openai', label: 'ChatGPT' }, { key: 'claude', label: 'Claude' }, { key: 'grok', label: 'Grok' }]"
+              :key="item.key"
+              :href="`/${item.key}`"
+              :class="{ active: providerMode === item.key }"
+              :aria-current="providerMode === item.key ? 'page' : undefined"
+              @click="navigateProvider($event, item.key)"
             >
-              ChatGPT
-            </button>
-            <button
-              type="button"
-              :class="{ active: providerMode === 'claude' }"
-              :aria-pressed="providerMode === 'claude'"
-              @click="switchProviderMode('claude')"
-            >
-              Claude
-            </button>
-            <button
-              type="button"
-              :class="{ active: providerMode === 'grok' }"
-              :aria-pressed="providerMode === 'grok'"
-              @click="switchProviderMode('grok')"
-            >
-              Grok
-            </button>
+              {{ item.label }}
+            </a>
           </div>
         </div>
 
@@ -125,7 +111,6 @@
               :provider="providerMode"
               :card-code="cardData.cardCode"
               :request-nonce="requestNonce"
-              @validating="cancelRedeemRestore"
               @validated="handleCardValidated"
             />
             <StepToken
@@ -147,8 +132,6 @@
               @card-verified="handleCardReverified"
               :tokenInfo="tokenData.tokenInfo"
               :initial-order="orderData"
-              @submitting="handleOrderSubmitting"
-              @submit-failed="handleOrderSubmitFailed"
               @completed="handleOrderCompleted"
               @reset="resetAll"
               @prev="prevStep"
@@ -232,11 +215,16 @@ import BillingQuery from './components/BillingQuery'
 import TokenQuery from './components/TokenQuery'
 import ClientAnnouncements from './components/ClientAnnouncementBroadcast'
 import { ReceiptText, ScanSearch } from '@lucide/vue'
-import { queryOrderByCard, queryRedeemResult, validateCard } from './services/api'
-import { clearRedeemFlow, createRequestNonce, readRedeemFlow, writeRedeemFlow } from './utils/redeemFlow'
+import { createRequestNonce } from './utils/redeemFlow'
 import { siteConfig } from './config/site'
 
 const PROVIDER_STORAGE_KEY = 'redeem.client.provider'
+
+// readRouteProviderMode 读取链接指定的平台；未指定时沿用原有首页与工具页行为。
+const readRouteProviderMode = () => {
+  if (typeof window === 'undefined') return null
+  return window.location.pathname.match(/^\/(openai|claude|grok)\/?$/)?.[1] || null
+}
 
 const readInitialViewMode = () => {
   if (typeof window === 'undefined') return 'exchange'
@@ -292,8 +280,7 @@ export default {
       siteCopyright: siteConfig.copyright?.trim() || '',
       currentStep: 0,
       requestNonce: createRequestNonce(),
-      restoreVersion: 0,
-      providerMode: readStoredProviderMode(),
+      providerMode: readRouteProviderMode() || readStoredProviderMode(),
       viewMode: readInitialViewMode(),
       cardData: {
         cardCode: '',
@@ -346,7 +333,6 @@ export default {
   mounted() {
     window.addEventListener('keydown', this.handleKeydown)
     window.addEventListener('popstate', this.handlePopState)
-    this.restoreRedeemFlow()
   },
   beforeUnmount() {
     window.removeEventListener('keydown', this.handleKeydown)
@@ -355,20 +341,14 @@ export default {
   },
   methods: {
     handleCardValidated(data) {
-      this.restoreVersion++
       this.cardData = {
         cardCode: data.cardCode,
         cardInfo: data.cardInfo
       }
       this.currentStep = 1
-      this.persistRedeemFlow('reserved')
-    },
-    cancelRedeemRestore() {
-      this.restoreVersion++
     },
     handleCardReverified(cardInfo) {
       this.cardData = { ...this.cardData, cardInfo }
-      this.persistRedeemFlow(this.currentStep === 2 ? 'submitting' : 'reserved')
     },
     handleTokenValidated(data) {
       this.tokenData = {
@@ -376,18 +356,10 @@ export default {
         tokenInfo: data.tokenInfo
       }
       this.currentStep = 2
-      this.persistRedeemFlow('account_validated')
-    },
-    handleOrderSubmitting() {
-      this.persistRedeemFlow('submitting')
-    },
-    handleOrderSubmitFailed() {
-      this.persistRedeemFlow('account_validated')
     },
     handleOrderCompleted(data) {
       this.orderData = data
       this.orderCompleted = true
-      this.persistRedeemFlow('ordered')
     },
     prevStep() {
       if (this.currentStep > 0) {
@@ -395,8 +367,6 @@ export default {
       }
     },
     resetAll() {
-      this.restoreVersion++
-      clearRedeemFlow()
       this.requestNonce = createRequestNonce()
       this.currentStep = 0
       this.cardData = { cardCode: '', cardInfo: null }
@@ -404,81 +374,11 @@ export default {
       this.orderData = null
       this.orderCompleted = false
     },
-    persistRedeemFlow(state) {
-      if (!this.requestNonce || !this.cardData.cardCode || !this.cardData.cardInfo) return
-      writeRedeemFlow({
-        state,
-        requestNonce: this.requestNonce,
-        provider: this.providerMode,
-        cdk: this.cardData.cardCode,
-        cardInfo: this.cardData.cardInfo,
-        expiresAt: this.cardData.cardInfo.expiresAt || '',
-        orderData: state === 'ordered' ? this.orderData : null,
-        orderQueryToken: state === 'ordered' && this.orderData ? this.orderData.orderQueryToken || '' : ''
-      })
-    },
-    async restoreRedeemFlow() {
-      const flow = readRedeemFlow()
-      if (!flow || !flow.requestNonce || !flow.cdk) return
-
-      const restoreVersion = ++this.restoreVersion
-      const restoreIsCurrent = () => (
-        this.restoreVersion === restoreVersion && this.requestNonce === flow.requestNonce
-      )
-
-      const provider = normalizeProviderMode(flow.provider)
-      this.providerMode = provider
-      writeStoredProviderMode(provider)
-      this.requestNonce = flow.requestNonce
-
-      if (flow.state === 'ordered' && flow.orderData) {
-        this.cardData = { cardCode: flow.cdk, cardInfo: flow.cardInfo || null }
-        this.orderData = flow.orderData
-        this.orderCompleted = true
-        this.currentStep = 2
-        return
-      }
-
-      if (flow.state === 'submitting') {
-        const activationToken = flow.cardInfo && flow.cardInfo.activationToken
-        const recovered = flow.orderQueryToken
-          ? await queryRedeemResult(flow.orderQueryToken, flow.cdk)
-          : activationToken
-            ? await queryOrderByCard(flow.cdk, activationToken)
-            : null
-        if (!restoreIsCurrent()) return
-        if (recovered && recovered.code === 200 && recovered.data) {
-          this.cardData = { cardCode: flow.cdk, cardInfo: flow.cardInfo || null }
-          this.orderData = recovered.data
-          this.orderCompleted = true
-          this.currentStep = 2
-          this.persistRedeemFlow('ordered')
-          return
-        }
-        if (recovered && recovered.retryable) {
-          this.cardData = { cardCode: flow.cdk, cardInfo: null }
-          this.currentStep = 0
-          return
-        }
-      }
-
-      const verified = await validateCard(flow.cdk, provider, flow.requestNonce)
-      if (!restoreIsCurrent()) return
-      if (verified.code === 200) {
-        this.cardData = { cardCode: flow.cdk, cardInfo: verified.data }
-        this.currentStep = 1
-        this.persistRedeemFlow('reserved')
-        return
-      }
-
-      if (verified.retryable) {
-        this.cardData = { cardCode: flow.cdk, cardInfo: null }
-        this.currentStep = 0
-        return
-      }
-
-      clearRedeemFlow()
-      this.requestNonce = createRequestNonce()
+    // navigateProvider 普通点击页内切换，修饰键和中键保留原生链接行为。
+    navigateProvider(event, provider) {
+      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+      event.preventDefault()
+      this.switchProviderMode(provider)
     },
     switchProviderMode(provider) {
       const nextProvider = normalizeProviderMode(provider)
@@ -486,15 +386,14 @@ export default {
         this.switchToExchange()
         return
       }
-      if (window.location.pathname !== '/' || window.location.search) window.history.pushState({ view: 'exchange' }, '', '/')
-      this.viewMode = 'exchange'
       this.providerMode = nextProvider
       writeStoredProviderMode(nextProvider)
       this.resetAll()
+      this.switchToExchange()
     },
     switchToQuery() {
       this.viewMode = 'query'
-      window.history.pushState({ view: 'query' }, '', '/?view=query')
+      window.history.pushState({ view: 'query' }, '', `/${this.providerMode}?view=query`)
     },
     switchToBilling() {
       this.viewMode = 'billing'
@@ -505,8 +404,9 @@ export default {
       window.history.pushState({ view: 'token-query' }, '', '/token-query')
     },
     switchToExchange() {
-      if (window.location.pathname !== '/' || window.location.search) {
-        window.history.pushState({ view: 'exchange' }, '', '/')
+      const path = `/${this.providerMode}`
+      if (window.location.pathname !== path || window.location.search) {
+        window.history.pushState({ view: 'exchange' }, '', path)
       }
       this.viewMode = 'exchange'
       this.currentStep = 0
@@ -553,6 +453,12 @@ export default {
       }
     },
     handlePopState() {
+      const provider = readRouteProviderMode() || readStoredProviderMode()
+      if (provider !== this.providerMode) {
+        this.providerMode = provider
+        writeStoredProviderMode(provider)
+        this.resetAll()
+      }
       this.viewMode = readInitialViewMode()
       if (this.viewMode === 'exchange') {
         this.currentStep = 0

@@ -90,7 +90,7 @@ const providerLabel = (provider) => {
 const mapCDKStatusText = (status) => {
   const statusMap = {
     unused: '可兑换',
-    activating: '已锁定',
+    activating: '兑换中',
     activated: '已兑换',
     replaced: '已调换',
     disabled: '已禁用',
@@ -99,14 +99,13 @@ const mapCDKStatusText = (status) => {
   return statusMap[status] || status || '未知'
 }
 
-export const validateCard = async (cardCode, expectedProvider = 'openai', requestNonce = '', renew = false) => {
+export const validateCard = async (cardCode, expectedProvider = 'openai', requestNonce = '') => {
   const cdk = String(cardCode || '').trim()
   const expected = normalizeProvider(expectedProvider)
   const response = await request('/verifyCdk', 'POST', {
     cdk,
     expected_provider: expected,
     request_nonce: String(requestNonce || '').trim(),
-    renew,
   })
 
   if (response.code !== 200) {
@@ -133,7 +132,7 @@ export const validateCard = async (cardCode, expectedProvider = 'openai', reques
       productType: response.product_type || 'subscription',
       creditQuantity: Number(response.credit_quantity || 0),
       cardStatus: 1,
-      cardStatusText: '已锁定，可继续兑换',
+      cardStatusText: '校验通过，提交时确认兑换',
       cdk,
       activationToken: response.activation_token,
       expiresIn: response.expires_in,
@@ -146,7 +145,7 @@ export const validateCard = async (cardCode, expectedProvider = 'openai', reques
 // 仅在用户点击继续或提交时恢复校验，空闲页面不会长期占用卡密。
 const requestWithCDKVerification = async (url, payload, provider, requestNonce, onCardVerified) => {
   const verify = async () => {
-    const verified = await validateCard(payload.cdk, provider, requestNonce, true)
+    const verified = await validateCard(payload.cdk, provider, requestNonce)
     if (verified.code !== 200) {
       return { code: 0, error: verified.message, retryable: verified.retryable }
     }
